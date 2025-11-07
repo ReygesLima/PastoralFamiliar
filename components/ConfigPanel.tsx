@@ -34,6 +34,18 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave }) => {
                             O erro indica que a tabela <code className="bg-amber-100 p-1 rounded text-xs font-mono">membros_pastoral</code> não foi encontrada. 
                             Verifique no seu painel do Supabase (em "Table Editor") se a tabela foi criada e se o nome corresponde <span className="font-bold">exatamente</span>.
                         </p>
+                         <div className="mt-4 pt-3 border-t border-amber-200">
+                             <h5 className="font-semibold text-amber-800">Como criar a tabela?</h5>
+                             <p className="text-amber-700 text-sm mt-1">
+                                Para sua conveniência, um script SQL foi gerado. Siga estes passos:
+                            </p>
+                            <ol className="list-decimal list-inside text-sm text-amber-700 mt-2 space-y-1">
+                                <li>Abra o arquivo <code className="bg-amber-100 p-1 rounded text-xs font-mono">database.sql</code> na lista de arquivos.</li>
+                                <li>Copie todo o seu conteúdo.</li>
+                                <li>No seu painel do Supabase, vá para o <strong>SQL Editor</strong>.</li>
+                                <li>Cole o conteúdo e clique em <strong>RUN</strong>.</li>
+                            </ol>
+                        </div>
                     </div>
                 )}
 
