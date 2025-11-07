@@ -18,7 +18,7 @@ const FormField: React.FC<{ name: keyof Member, label: string | React.ReactNode,
 );
 
 const SectionTitle: React.FC<{title: string}> = ({title}) => (
-    <h3 className="text-lg font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-4 col-span-1 md:col-span-2">{title}</h3>
+    <h3 className="text-sm font-semibold text-white bg-blue-600 p-2 rounded-md col-span-1 md:col-span-2">{title}</h3>
 );
 
 const Tooltip: React.FC<{ text: string, children: React.ReactNode }> = ({ text, children }) => (
@@ -143,7 +143,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
             if (!data.erro) {
                 setFormState(prev => ({
                     ...prev,
-                    street: data.logouro,
+                    street: data.logradouro,
                     neighborhood: data.bairro,
                     city: data.localidade,
                     state: data.uf,
@@ -161,7 +161,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
     const validate = () => {
         const newErrors: Partial<Record<keyof Member, string>> = {};
-        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
+        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'sector', 'role'];
         
         requiredFields.forEach(field => {
             if (!formState[field]) {
@@ -298,7 +298,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                      <FormField name="parish" label="Paróquia que participa*" error={errors.parish}>
                         <input id="parish" type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="community" label="Comunidade*" error={errors.community}>
+                     <FormField name="community" label="Comunidade" error={errors.community}>
                         <input id="community" type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
                     <FormField name="sector" label="Setor Pastoral*" error={errors.sector}>
@@ -311,7 +311,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                             {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                     </FormField>
-                     <FormField name="joinDate" label="Data de Ingresso na Pastoral*" error={errors.joinDate}>
+                     <FormField name="joinDate" label="Data de Ingresso na Pastoral" error={errors.joinDate}>
                         <input id="joinDate" type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
                     
