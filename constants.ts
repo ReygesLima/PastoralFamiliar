@@ -1,4 +1,4 @@
-import { Member, MaritalStatus } from './types';
+import { Member, MaritalStatus, Sector, Role } from './types';
 
 export const INITIAL_MEMBERS: Member[] = [
     {
@@ -17,7 +17,8 @@ export const INITIAL_MEMBERS: Member[] = [
         state: 'SP',
         parish: 'Paróquia Catedral da Sé',
         community: 'Comunidade Matriz',
-        role: 'Coordenador',
+        sector: Sector.CASOS_ESPECIAIS,
+        role: Role.COORDENADOR,
         joinDate: '2018-02-10',
         notes: 'Casal coordenador do setor A.'
     },
@@ -36,7 +37,8 @@ export const INITIAL_MEMBERS: Member[] = [
         state: 'RJ',
         parish: 'Paróquia São José',
         community: 'Comunidade São José',
-        role: 'Membro Ativo',
+        sector: Sector.PRE_MATRIMONIAL,
+        role: Role.AGENTE,
         joinDate: '2022-08-01',
         notes: 'Responsável pelas mídias sociais.'
     },
@@ -55,7 +57,8 @@ export const INITIAL_MEMBERS: Member[] = [
         state: 'MG',
         parish: 'Paróquia Santa Rita',
         community: 'Comunidade Santa Rita',
-        role: 'Casal de Apoio',
+        sector: Sector.POS_MATRIMONIAL,
+        role: Role.AGENTE,
         joinDate: '2015-01-20',
         notes: 'Ajuda na organização de eventos.'
     },

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Member, MaritalStatus } from '../types';
-import { EditIcon, DeleteIcon, AddIcon, UserIcon } from './icons';
+import { Member, MaritalStatus, Role } from '../types';
+import { EditIcon, DeleteIcon, AddIcon, UserIcon, DownloadIcon } from './icons';
 
 interface MemberListProps {
     members: Member[];
@@ -30,6 +30,7 @@ const MemberCard: React.FC<{ member: Member; onEdit: (id: number) => void; onDel
                 </div>
                 
                 <div className="space-y-2 text-sm text-slate-600">
+                    <p><i className="fas fa-sitemap mr-2 text-slate-400"></i> {member.sector}</p>
                     <p><i className="fas fa-church mr-2 text-slate-400"></i> {member.parish} / {member.community}</p>
                     <p><i className="fas fa-phone mr-2 text-slate-400"></i> {member.phone}</p>
                     <p><i className="fas fa-map-marker-alt mr-2 text-slate-400"></i> {member.city}, {member.state}</p>
@@ -56,7 +57,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
     const [filterRole, setFilterRole] = useState('');
 
     const communities = useMemo(() => [...new Set(members.map(m => m.community))], [members]);
-    const roles = useMemo(() => [...new Set(members.map(m => m.role))], [members]);
+    const roles = Object.values(Role);
 
     const filteredMembers = useMemo(() => {
         return members.filter(member => {
@@ -69,6 +70,51 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             return searchMatch && communityMatch && maritalStatusMatch && roleMatch;
         });
     }, [members, searchTerm, filterCommunity, filterMaritalStatus, filterRole]);
+
+    const handleExportCSV = () => {
+        if (filteredMembers.length === 0) {
+            alert("Não há membros para exportar com os filtros selecionados.");
+            return;
+        }
+    
+        const headers = [
+            "Nome Completo", "Data de Nascimento", "Estado Civil", "Nome do Cônjuge", 
+            "Telefone", "E-mail", "CEP", "Endereço", "Bairro", "Cidade", "UF",
+            "Paróquia", "Comunidade", "Setor", "Função", "Data de Ingresso", "Observações"
+        ];
+    
+        const rows = filteredMembers.map(member => [
+            `"${member.fullName.replace(/"/g, '""')}"`,
+            member.birthDate,
+            member.maritalStatus,
+            `"${member.spouseName?.replace(/"/g, '""') || ''}"`,
+            member.phone,
+            member.email,
+            member.cep,
+            `"${member.street.replace(/"/g, '""')}"`,
+            `"${member.neighborhood.replace(/"/g, '""')}"`,
+            `"${member.city.replace(/"/g, '""')}"`,
+            member.state,
+            `"${member.parish.replace(/"/g, '""')}"`,
+            `"${member.community.replace(/"/g, '""')}"`,
+            member.sector,
+            member.role,
+            member.joinDate,
+            `"${member.notes?.replace(/"/g, '""') || ''}"`,
+        ].join(','));
+    
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'membros_pastoral_familiar.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className="space-y-6">
@@ -111,13 +157,22 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-700">Membros Cadastrados ({filteredMembers.length})</h2>
-                <button 
-                    onClick={onAddNew}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                    <AddIcon className="h-5 w-5" />
-                    <span>Novo Membro</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                     <button 
+                        onClick={handleExportCSV}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                        <DownloadIcon className="h-5 w-5" />
+                        <span>Exportar</span>
+                    </button>
+                    <button 
+                        onClick={onAddNew}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        <AddIcon className="h-5 w-5" />
+                        <span>Novo Membro</span>
+                    </button>
+                </div>
             </div>
 
             {filteredMembers.length > 0 ? (

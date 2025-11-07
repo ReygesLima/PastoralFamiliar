@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Member, MaritalStatus } from '../types';
+import { Member, MaritalStatus, Sector, Role } from '../types';
 import { UserIcon } from './icons';
 
 interface MemberFormProps {
@@ -38,7 +38,8 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
         state: '',
         parish: '',
         community: '',
-        role: '',
+        sector: Sector.PRE_MATRIMONIAL,
+        role: Role.AGENTE,
         joinDate: '',
         notes: '',
     };
@@ -100,7 +101,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
             if (!data.erro) {
                 setFormState(prev => ({
                     ...prev,
-                    street: data.logradouro,
+                    street: data.logouro,
                     neighborhood: data.bairro,
                     city: data.localidade,
                     state: data.uf,
@@ -118,7 +119,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
     const validate = () => {
         const newErrors: Partial<Record<keyof Member, string>> = {};
-        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'role', 'joinDate'];
+        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
         
         requiredFields.forEach(field => {
             if (!formState[field]) {
@@ -215,11 +216,18 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                      <FormField name="parish" label="Paróquia que participa*" error={errors.parish}>
                         <input id="parish" type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="community" label="Comunidade / Setor Pastoral*" error={errors.community}>
+                     <FormField name="community" label="Comunidade*" error={errors.community}>
                         <input id="community" type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
+                    <FormField name="sector" label="Setor Pastoral*" error={errors.sector}>
+                        <select id="sector" name="sector" value={formState.sector} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            {Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </FormField>
                      <FormField name="role" label="Função na Pastoral*" error={errors.role}>
-                        <input id="role" type="text" name="role" value={formState.role || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        <select id="role" name="role" value={formState.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
                     </FormField>
                      <FormField name="joinDate" label="Data de Ingresso na Pastoral*" error={errors.joinDate}>
                         <input id="joinDate" type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>

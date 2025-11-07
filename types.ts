@@ -5,6 +5,18 @@ export enum MaritalStatus {
     SEPARADO = 'Separado',
 }
 
+export enum Sector {
+    PRE_MATRIMONIAL = 'Pré-matrimonial',
+    POS_MATRIMONIAL = 'Pós-matrimonial',
+    CASOS_ESPECIAIS = 'Casos Especiais',
+    SERVICO_A_VIDA = 'Serviço à Vida',
+}
+
+export enum Role {
+    AGENTE = 'Agente',
+    COORDENADOR = 'Coordenador',
+}
+
 export interface Member {
     id: number;
     photo?: string;
@@ -21,7 +33,8 @@ export interface Member {
     state: string;
     parish: string;
     community: string;
-    role: string;
+    sector: Sector;
+    role: Role;
     joinDate: string;
     notes?: string;
 }
