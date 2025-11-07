@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Member, View } from './types';
 import { INITIAL_MEMBERS } from './constants';
 import Header from './components/Header';
@@ -9,9 +9,29 @@ import Reports from './components/Reports';
 import About from './components/About';
 
 const App: React.FC = () => {
-    const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
+    const [members, setMembers] = useState<Member[]>(() => {
+        try {
+            const savedMembers = window.localStorage.getItem('pastoralFamiliarMembers');
+            if (savedMembers) {
+                return JSON.parse(savedMembers);
+            }
+        } catch (error) {
+            console.error("Erro ao carregar membros do localStorage:", error);
+        }
+        return INITIAL_MEMBERS;
+    });
+
     const [currentView, setCurrentView] = useState<View>('LIST');
     const [editingMember, setEditingMember] = useState<Member | null>(null);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('pastoralFamiliarMembers', JSON.stringify(members));
+        } catch (error) {
+            console.error("Erro ao salvar membros no localStorage:", error);
+        }
+    }, [members]);
+
 
     const handleSaveMember = (member: Member) => {
         if (member.id) {

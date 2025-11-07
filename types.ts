@@ -24,6 +24,7 @@ export interface Member {
     birthDate: string;
     maritalStatus: MaritalStatus;
     spouseName?: string;
+    weddingDate?: string;
     phone: string;
     email: string;
     cep: string;
@@ -31,6 +32,8 @@ export interface Member {
     neighborhood: string;
     city: string;
     state: string;
+    hasVehicle: boolean;
+    vehicleModel?: string;
     parish: string;
     community: string;
     sector: Sector;

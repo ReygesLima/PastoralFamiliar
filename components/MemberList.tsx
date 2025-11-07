@@ -78,9 +78,10 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
         }
     
         const headers = [
-            "Nome Completo", "Data de Nascimento", "Estado Civil", "Nome do Cônjuge", 
+            "Nome Completo", "Data de Nascimento", "Estado Civil", "Nome do Cônjuge", "Data de Casamento",
             "Telefone", "E-mail", "CEP", "Endereço", "Bairro", "Cidade", "UF",
-            "Paróquia", "Comunidade", "Setor", "Função", "Data de Ingresso", "Observações"
+            "Possui Veículo", "Modelo do Veículo", "Paróquia", "Comunidade", "Setor", 
+            "Função", "Data de Ingresso", "Observações"
         ];
     
         const rows = filteredMembers.map(member => [
@@ -88,6 +89,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             member.birthDate,
             member.maritalStatus,
             `"${member.spouseName?.replace(/"/g, '""') || ''}"`,
+            member.weddingDate || '',
             member.phone,
             member.email,
             member.cep,
@@ -95,6 +97,8 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             `"${member.neighborhood.replace(/"/g, '""')}"`,
             `"${member.city.replace(/"/g, '""')}"`,
             member.state,
+            member.hasVehicle ? 'Sim' : 'Não',
+            `"${member.vehicleModel?.replace(/"/g, '""') || ''}"`,
             `"${member.parish.replace(/"/g, '""')}"`,
             `"${member.community.replace(/"/g, '""')}"`,
             member.sector,

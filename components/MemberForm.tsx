@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Member, MaritalStatus, Sector, Role } from '../types';
-import { UserIcon } from './icons';
+import { UserIcon, InfoIcon } from './icons';
 
 interface MemberFormProps {
     memberToEdit: Member | null;
@@ -8,8 +8,8 @@ interface MemberFormProps {
     onCancel: () => void;
 }
 
-// Helper components moved outside MemberForm to prevent re-creation on each render, which causes focus loss.
-const FormField: React.FC<{ name: keyof Member, label: string, error?: string, children: React.ReactNode}> = ({ name, label, error, children }) => (
+// Helper components
+const FormField: React.FC<{ name: keyof Member, label: string | React.ReactNode, error?: string, children: React.ReactNode}> = ({ name, label, error, children }) => (
     <div>
         <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
         {children}
@@ -21,6 +21,16 @@ const SectionTitle: React.FC<{title: string}> = ({title}) => (
     <h3 className="text-lg font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-4 col-span-1 md:col-span-2">{title}</h3>
 );
 
+const Tooltip: React.FC<{ text: string, children: React.ReactNode }> = ({ text, children }) => (
+    <div className="relative flex items-center group">
+        {children}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-sm text-white bg-slate-700 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+            {text}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-700"></div>
+        </div>
+    </div>
+);
+
 
 const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel }) => {
     const initialState: Omit<Member, 'id'> = {
@@ -29,6 +39,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
         birthDate: '',
         maritalStatus: MaritalStatus.SOLTEIRO,
         spouseName: '',
+        weddingDate: '',
         phone: '',
         email: '',
         cep: '',
@@ -36,6 +47,8 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
         neighborhood: '',
         city: '',
         state: '',
+        hasVehicle: false,
+        vehicleModel: '',
         parish: '',
         community: '',
         sector: Sector.PRE_MATRIMONIAL,
@@ -59,21 +72,50 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        
-        setFormState(prev => {
-            const newState = { ...prev, [name]: value };
-            if (name === 'maritalStatus' && value !== MaritalStatus.CASADO) {
-                newState.spouseName = '';
-            }
-            return newState;
-        });
 
+        // Clear error for the field being changed
         if (errors[name as keyof Member]) {
             setErrors(prevErrors => {
                 const newErrors = { ...prevErrors };
                 delete newErrors[name as keyof Member];
                 return newErrors;
             });
+        }
+        
+        // Handle state changes based on field name
+        if (name === 'hasVehicle') {
+            const hasVehicleValue = value === 'true';
+            setFormState(prev => {
+                const newState = { 
+                    ...prev, 
+                    hasVehicle: hasVehicleValue 
+                };
+                // If "No" is selected for vehicle, clear the model field.
+                if (!hasVehicleValue) {
+                    newState.vehicleModel = '';
+                }
+                return newState;
+            });
+        } else if (name === 'maritalStatus') {
+            setFormState(prev => {
+                const newState = { ...prev, maritalStatus: value as MaritalStatus };
+                // If not married, clear spouse and wedding date fields.
+                if (value !== MaritalStatus.CASADO) {
+                    newState.spouseName = '';
+                    newState.weddingDate = '';
+                }
+                return newState;
+            });
+        } else if (name === 'phone') {
+            const maskedValue = value
+              .replace(/\D/g, '')
+              .replace(/^(\d{2})(\d)/g, '($1) $2')
+              .replace(/(\d{5})(\d)/, '$1-$2')
+              .slice(0, 15); // (XX) XXXXX-XXXX
+            setFormState(prev => ({ ...prev, [name]: maskedValue }));
+        } else {
+            // Default handler for simple value changes
+            setFormState(prev => ({ ...prev, [name]: value }));
         }
     };
 
@@ -127,12 +169,17 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
             }
         });
 
-        if (formState.maritalStatus === MaritalStatus.CASADO && !formState.spouseName) {
-            newErrors.spouseName = 'Nome do cônjuge é obrigatório para casados.';
+        if (formState.maritalStatus === MaritalStatus.CASADO) {
+            if(!formState.spouseName) newErrors.spouseName = 'Nome do cônjuge é obrigatório para casados.';
+            if(!formState.weddingDate) newErrors.weddingDate = 'Data de casamento é obrigatória para casados.';
         }
         
         if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) {
              newErrors.email = 'E-mail inválido.';
+        }
+
+        if (formState.hasVehicle && !formState.vehicleModel) {
+            newErrors.vehicleModel = 'Modelo do veículo é obrigatório se possui veículo.';
         }
 
         setErrors(newErrors);
@@ -179,9 +226,14 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                         </select>
                     </FormField>
                     {formState.maritalStatus === MaritalStatus.CASADO && (
-                        <FormField name="spouseName" label="Nome do Cônjuge*" error={errors.spouseName}>
-                            <input id="spouseName" type="text" name="spouseName" value={formState.spouseName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                        </FormField>
+                        <>
+                            <FormField name="spouseName" label="Nome do Cônjuge*" error={errors.spouseName}>
+                                <input id="spouseName" type="text" name="spouseName" value={formState.spouseName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                            </FormField>
+                             <FormField name="weddingDate" label="Data de Casamento*" error={errors.weddingDate}>
+                                 <input id="weddingDate" type="date" name="weddingDate" value={formState.weddingDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                            </FormField>
+                        </>
                     )}
                      <FormField name="phone" label="Telefone / WhatsApp*" error={errors.phone}>
                         <input id="phone" type="tel" name="phone" placeholder="(XX) XXXXX-XXXX" value={formState.phone || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
@@ -189,6 +241,36 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                     <FormField name="email" label="E-mail*" error={errors.email}>
                         <input id="email" type="email" name="email" placeholder="exemplo@email.com" value={formState.email || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
+
+                    <div className="md:col-span-2">
+                        <div
+                            className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2"
+                        >
+                            Possui Veículo?*
+                             <Tooltip text="Esta informação é necessária caso precisemos do seu veículo para pegar idosos na missa da Saúde.">
+                                <InfoIcon className="h-5 w-5 text-slate-400" />
+                            </Tooltip>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                             <label className="flex items-center">
+                                <input type="radio" name="hasVehicle" value="true" checked={formState.hasVehicle === true} onChange={handleChange} className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500" />
+                                <span className="ml-2 text-sm text-slate-700">Sim</span>
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" name="hasVehicle" value="false" checked={formState.hasVehicle === false} onChange={handleChange} className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500" />
+                                <span className="ml-2 text-sm text-slate-700">Não</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {formState.hasVehicle && (
+                        <div className="md:col-span-2">
+                             <FormField name="vehicleModel" label="Modelo do Veículo*" error={errors.vehicleModel}>
+                                <input id="vehicleModel" type="text" name="vehicleModel" value={formState.vehicleModel || ''} onChange={handleChange} placeholder="Ex: Fiat Uno" className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                            </FormField>
+                        </div>
+                    )}
+
 
                     <SectionTitle title="Endereço" />
                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
