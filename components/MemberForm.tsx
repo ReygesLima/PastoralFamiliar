@@ -8,6 +8,20 @@ interface MemberFormProps {
     onCancel: () => void;
 }
 
+// Helper components moved outside MemberForm to prevent re-creation on each render, which causes focus loss.
+const FormField: React.FC<{ name: keyof Member, label: string, error?: string, children: React.ReactNode}> = ({ name, label, error, children }) => (
+    <div>
+        <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
+        {children}
+        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+);
+
+const SectionTitle: React.FC<{title: string}> = ({title}) => (
+    <h3 className="text-lg font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-4 col-span-1 md:col-span-2">{title}</h3>
+);
+
+
 const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel }) => {
     const initialState: Omit<Member, 'id'> = {
         fullName: '',
@@ -39,18 +53,26 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
         } else {
             setFormState(initialState);
         }
+        setErrors({});
     }, [memberToEdit]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormState(prev => ({ ...prev, [name]: value }));
         
-        if (name === 'maritalStatus' && value !== MaritalStatus.CASADO) {
-            setFormState(prev => ({ ...prev, spouseName: '' }));
-        }
+        setFormState(prev => {
+            const newState = { ...prev, [name]: value };
+            if (name === 'maritalStatus' && value !== MaritalStatus.CASADO) {
+                newState.spouseName = '';
+            }
+            return newState;
+        });
 
         if (errors[name as keyof Member]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
+            setErrors(prevErrors => {
+                const newErrors = { ...prevErrors };
+                delete newErrors[name as keyof Member];
+                return newErrors;
+            });
         }
     };
 
@@ -123,18 +145,6 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
             onSave(formState as Member);
         }
     };
-
-    const FormField: React.FC<{ name: keyof Member, label: string, children: React.ReactNode}> = ({ name, label, children }) => (
-        <div>
-            <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
-            {children}
-            {errors[name] && <p className="mt-1 text-sm text-red-600">{errors[name]}</p>}
-        </div>
-    );
-    
-    const SectionTitle: React.FC<{title: string}> = ({title}) => (
-        <h3 className="text-lg font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-4 col-span-1 md:col-span-2">{title}</h3>
-    );
     
     return (
         <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md">
@@ -142,8 +152,8 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
             <form onSubmit={handleSubmit} className="space-y-6">
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <FormField name="fullName" label="Nome Completo*">
-                        <input type="text" name="fullName" value={formState.fullName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                    <FormField name="fullName" label="Nome Completo*" error={errors.fullName}>
+                        <input id="fullName" type="text" name="fullName" value={formState.fullName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
 
                      <div className="flex items-center space-x-4 mt-1">
@@ -151,77 +161,73 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                            <img className="h-20 w-20 object-cover rounded-full" src={formState.photo} alt="Foto do membro"/> :
                            <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400"><UserIcon className="w-10 h-10" /></div>
                         }
-                        <FormField name="photo" label="Foto do Membro">
-                           <input type="file" name="photo" onChange={handleFileChange} accept="image/*" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <FormField name="photo" label="Foto do Membro" error={errors.photo}>
+                           <input id="photo" type="file" name="photo" onChange={handleFileChange} accept="image/*" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                         </FormField>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
                     <SectionTitle title="Informações Pessoais e Contato" />
-                    <FormField name="birthDate" label="Data de Nascimento*">
-                         <input type="date" name="birthDate" value={formState.birthDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                    <FormField name="birthDate" label="Data de Nascimento*" error={errors.birthDate}>
+                         <input id="birthDate" type="date" name="birthDate" value={formState.birthDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                    <FormField name="maritalStatus" label="Estado Civil*">
-                        <select name="maritalStatus" value={formState.maritalStatus} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    <FormField name="maritalStatus" label="Estado Civil*" error={errors.maritalStatus}>
+                        <select id="maritalStatus" name="maritalStatus" value={formState.maritalStatus} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
                             {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
                         </select>
                     </FormField>
                     {formState.maritalStatus === MaritalStatus.CASADO && (
-                        <FormField name="spouseName" label="Nome do Cônjuge*">
-                            <input type="text" name="spouseName" value={formState.spouseName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        <FormField name="spouseName" label="Nome do Cônjuge*" error={errors.spouseName}>
+                            <input id="spouseName" type="text" name="spouseName" value={formState.spouseName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                         </FormField>
                     )}
-                     <FormField name="phone" label="Telefone / WhatsApp*">
-                        <input type="tel" name="phone" placeholder="(XX) XXXXX-XXXX" value={formState.phone || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                     <FormField name="phone" label="Telefone / WhatsApp*" error={errors.phone}>
+                        <input id="phone" type="tel" name="phone" placeholder="(XX) XXXXX-XXXX" value={formState.phone || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                    <FormField name="email" label="E-mail*">
-                        <input type="email" name="email" placeholder="exemplo@email.com" value={formState.email || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                    <FormField name="email" label="E-mail*" error={errors.email}>
+                        <input id="email" type="email" name="email" placeholder="exemplo@email.com" value={formState.email || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
 
                     <SectionTitle title="Endereço" />
-                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                         <div className="sm:col-span-1">
-                            <FormField name="cep" label="CEP*">
-                               <input type="text" name="cep" placeholder="Apenas números" value={formState.cep || ''} onChange={handleChange} onBlur={handleCepBlur} maxLength={9} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                            </FormField>
-                         </div>
+                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <FormField name="cep" label="CEP*" error={errors.cep}>
+                           <input id="cep" type="text" name="cep" placeholder="Apenas números" value={formState.cep || ''} onChange={handleChange} onBlur={handleCepBlur} maxLength={9} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        </FormField>
+                        <FormField name="neighborhood" label="Bairro*" error={errors.neighborhood}>
+                            <input id="neighborhood" type="text" name="neighborhood" value={formState.neighborhood || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        </FormField>
                          <div className="sm:col-span-2">
-                             <FormField name="street" label="Rua e Número*">
-                                <input type="text" name="street" value={formState.street || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                             <FormField name="street" label="Rua e Número*" error={errors.street}>
+                                <input id="street" type="text" name="street" value={formState.street || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                             </FormField>
                          </div>
-                    </div>
-                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <FormField name="neighborhood" label="Bairro*">
-                            <input type="text" name="neighborhood" value={formState.neighborhood || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        <FormField name="city" label="Cidade*" error={errors.city}>
+                            <input id="city" type="text" name="city" value={formState.city || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                         </FormField>
-                        <FormField name="city" label="Cidade*">
-                            <input type="text" name="city" value={formState.city || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                        </FormField>
-                        <FormField name="state" label="UF*">
-                            <input type="text" name="state" value={formState.state || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                        <FormField name="state" label="UF*" error={errors.state}>
+                            <input id="state" type="text" name="state" value={formState.state || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                         </FormField>
                      </div>
                    
 
                     <SectionTitle title="Informações Pastorais" />
-                     <FormField name="parish" label="Paróquia que participa*">
-                        <input type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                     <FormField name="parish" label="Paróquia que participa*" error={errors.parish}>
+                        <input id="parish" type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="community" label="Comunidade / Setor Pastoral*">
-                        <input type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                     <FormField name="community" label="Comunidade / Setor Pastoral*" error={errors.community}>
+                        <input id="community" type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="role" label="Função na Pastoral*">
-                        <input type="text" name="role" value={formState.role || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                     <FormField name="role" label="Função na Pastoral*" error={errors.role}>
+                        <input id="role" type="text" name="role" value={formState.role || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="joinDate" label="Data de Ingresso na Pastoral*">
-                        <input type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                     <FormField name="joinDate" label="Data de Ingresso na Pastoral*" error={errors.joinDate}>
+                        <input id="joinDate" type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
                     
                     <div className="md:col-span-2">
-                         <FormField name="notes" label="Observações Adicionais">
-                            <textarea name="notes" value={formState.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                         <FormField name="notes" label="Observações Adicionais" error={errors.notes}>
+                            <textarea id="notes" name="notes" value={formState.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </FormField>
                     </div>
                 </div>
