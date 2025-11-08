@@ -10,7 +10,7 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navItems = [
-        { view: 'LIST', label: 'Listar Membros', icon: 'fa-users' },
+        { view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' },
         { view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' },
         { view: 'ABOUT', label: 'Sobre', icon: 'fa-info-circle' },
     ] as const;

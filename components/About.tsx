@@ -13,8 +13,8 @@ const About: React.FC = () => {
             
             <div className="mt-8 text-left space-y-6 text-slate-700">
                 <p>
-                    Este aplicativo foi desenvolvido para auxiliar na organização e gestão dos membros da Pastoral Familiar da nossa paróquia. 
-                    O objetivo é centralizar as informações, facilitar a comunicação e otimizar o acompanhamento das atividades e dos membros.
+                    Este aplicativo foi desenvolvido para auxiliar na organização e gestão dos agentes da Pastoral Familiar da nossa paróquia. 
+                    O objetivo é centralizar as informações, facilitar a comunicação e otimizar o acompanhamento das atividades e dos agentes.
                 </p>
 
                 <div>

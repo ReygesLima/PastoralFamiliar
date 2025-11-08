@@ -7,12 +7,12 @@ import About from './components/About';
 import ConfigPanel from './components/ConfigPanel'; // Importar o novo componente
 import { Member, View } from './types';
 import { supabase } from './lib/supabaseClient';
-import { INITIAL_MEMBERS } from './constants';
+import { INITIAL_AGENTS } from './constants';
 
 function App() {
-    const [members, setMembers] = useState<Member[]>([]);
+    const [agents, setAgents] = useState<Member[]>([]);
     const [currentView, setCurrentView] = useState<View>('LIST');
-    const [memberToEdit, setMemberToEdit] = useState<Member | null>(null);
+    const [agentToEdit, setAgentToEdit] = useState<Member | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDbEmpty, setIsDbEmpty] = useState(false);
@@ -45,7 +45,7 @@ function App() {
         return 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.';
     };
 
-    async function fetchMembers() {
+    async function fetchAgents() {
         setLoading(true);
         setError(null);
         setIsDbEmpty(false);
@@ -63,13 +63,13 @@ function App() {
             if (data && data.length === 0) {
                 setIsDbEmpty(true);
             } else {
-                setMembers(data || []);
+                setAgents(data || []);
             }
 
         } catch (err: any) {
             const message = getErrorMessage(err);
-            console.error("Error fetching members:", message, err);
-            setError(`Falha ao carregar os membros: ${message}.`);
+            console.error("Error fetching agents:", message, err);
+            setError(`Falha ao carregar os agentes: ${message}.`);
             
             // Verifica se é um erro de autenticação/RLS/tabela não encontrada para mostrar o painel de configuração
             const isAuthError = message.includes('JWT') || message.includes('API key') || err.status === 401;
@@ -85,20 +85,20 @@ function App() {
     }
 
     useEffect(() => {
-        fetchMembers();
+        fetchAgents();
     }, []);
     
     const seedDatabase = async () => {
         setLoading(true);
         setError(null);
         try {
-            const membersToInsert = INITIAL_MEMBERS.map(({ id, ...rest }) => rest);
-            const { error: insertError } = await supabase.from('membros_pastoral').insert(membersToInsert);
+            const agentsToInsert = INITIAL_AGENTS.map(({ id, ...rest }) => rest);
+            const { error: insertError } = await supabase.from('membros_pastoral').insert(agentsToInsert);
 
             if (insertError) {
                 throw insertError;
             }
-            await fetchMembers();
+            await fetchAgents();
 
         } catch (err) {
              const message = getErrorMessage(err);
@@ -109,8 +109,8 @@ function App() {
         }
     };
 
-    const handleSaveMember = async (memberData: Member) => {
-        const dataToUpsert = { ...memberData };
+    const handleSaveAgent = async (agentData: Member) => {
+        const dataToUpsert = { ...agentData };
 
         if (!dataToUpsert.id) {
             delete (dataToUpsert as Partial<Member>).id;
@@ -125,20 +125,20 @@ function App() {
                 throw supabaseError;
             }
 
-            await fetchMembers();
+            await fetchAgents();
 
         } catch (err) {
             const message = getErrorMessage(err);
-            console.error("Error saving member:", message, err);
-            setError(`Falha ao salvar o membro: ${message}`);
+            console.error("Error saving agent:", message, err);
+            setError(`Falha ao salvar o agente: ${message}`);
         } finally {
             setCurrentView('LIST');
-            setMemberToEdit(null);
+            setAgentToEdit(null);
         }
     };
 
-    const handleDeleteMember = async (id: number) => {
-        if (window.confirm('Tem certeza que deseja excluir este membro?')) {
+    const handleDeleteAgent = async (id: number) => {
+        if (window.confirm('Tem certeza que deseja excluir este agente?')) {
             try {
                 const { error: supabaseError } = await supabase
                     .from('membros_pastoral')
@@ -149,30 +149,30 @@ function App() {
                     throw supabaseError;
                 }
 
-                setMembers(prevMembers => prevMembers.filter(m => m.id !== id));
+                setAgents(prevAgents => prevAgents.filter(m => m.id !== id));
             } catch (err) {
                 const message = getErrorMessage(err);
-                console.error("Error deleting member:", message, err);
-                setError(`Falha ao excluir o membro: ${message}`);
+                console.error("Error deleting agent:", message, err);
+                setError(`Falha ao excluir o agente: ${message}`);
             }
         }
     };
     
-    const handleEditMember = (id: number) => {
-        const member = members.find(m => m.id === id);
-        if (member) {
-            setMemberToEdit(member);
+    const handleEditAgent = (id: number) => {
+        const agent = agents.find(m => m.id === id);
+        if (agent) {
+            setAgentToEdit(agent);
             setCurrentView('FORM');
         }
     };
 
     const handleAddNew = () => {
-        setMemberToEdit(null);
+        setAgentToEdit(null);
         setCurrentView('FORM');
     };
 
     const handleCancel = () => {
-        setMemberToEdit(null);
+        setAgentToEdit(null);
         setCurrentView('LIST');
     };
 
@@ -200,7 +200,7 @@ function App() {
                 <div className="flex flex-col justify-center items-center py-20 bg-red-50 p-6 rounded-lg border border-red-200">
                     <p className="text-red-700 text-xl font-bold">Ocorreu um Erro</p>
                     <p className="text-red-600 mt-2 text-center">{error}</p>
-                    <button onClick={fetchMembers} className="mt-6 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button onClick={fetchAgents} className="mt-6 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Tentar Novamente
                     </button>
                 </div>
@@ -211,7 +211,7 @@ function App() {
             return (
                 <div className="flex flex-col justify-center items-center py-20 bg-white p-8 rounded-lg shadow-sm text-center">
                     <h2 className="text-2xl font-bold text-slate-700">Bem-vindo!</h2>
-                    <p className="text-slate-500 mt-2">Seu banco de dados de membros está vazio.</p>
+                    <p className="text-slate-500 mt-2">Seu banco de dados de agentes está vazio.</p>
                     <p className="text-slate-500 mt-1">Deseja adicionar alguns dados de exemplo para começar?</p>
                     <button onClick={seedDatabase} className="mt-6 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-semibold">
                         Povoar com Dados Iniciais
@@ -222,15 +222,15 @@ function App() {
 
         switch (currentView) {
             case 'LIST':
-                return <MemberList members={members} onEdit={handleEditMember} onDelete={handleDeleteMember} onAddNew={handleAddNew} />;
+                return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
             case 'FORM':
-                return <MemberForm memberToEdit={memberToEdit} onSave={handleSaveMember} onCancel={handleCancel} />;
+                return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
             case 'REPORTS':
-                return <Reports members={members} />;
+                return <Reports agents={agents} />;
             case 'ABOUT':
                 return <About />;
             default:
-                return <MemberList members={members} onEdit={handleEditMember} onDelete={handleDeleteMember} onAddNew={handleAddNew} />;
+                return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
         }
     };
 

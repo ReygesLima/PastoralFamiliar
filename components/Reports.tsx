@@ -7,28 +7,28 @@ import html2canvas from 'html2canvas';
 import { DownloadIcon } from './icons';
 
 interface ReportsProps {
-    members: Member[];
+    agents: Member[];
 }
 
-const Reports: React.FC<ReportsProps> = ({ members }) => {
+const Reports: React.FC<ReportsProps> = ({ agents }) => {
     const [isExporting, setIsExporting] = useState(false);
-    const totalMembers = members.length;
+    const totalAgents = agents.length;
 
     const dataBySector = useMemo(() => {
-        const counts = members.reduce((acc, member) => {
+        const counts = agents.reduce((acc, member) => {
             acc[member.sector] = (acc[member.sector] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [members]);
+    }, [agents]);
 
     const dataByMaritalStatus = useMemo(() => {
-        const counts = members.reduce((acc, member) => {
+        const counts = agents.reduce((acc, member) => {
             acc[member.maritalStatus] = (acc[member.maritalStatus] || 0) + 1;
             return acc;
         }, {} as Record<MaritalStatus, number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [members]);
+    }, [agents]);
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -94,24 +94,24 @@ const Reports: React.FC<ReportsProps> = ({ members }) => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                    <h3 className="text-lg font-semibold text-slate-600">Total de Membros</h3>
-                    <p className="text-5xl font-bold text-blue-600 mt-2">{totalMembers}</p>
+                    <h3 className="text-lg font-semibold text-slate-600">Total de Agentes</h3>
+                    <p className="text-5xl font-bold text-blue-600 mt-2">{totalAgents}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md text-center">
                     <h3 className="text-lg font-semibold text-slate-600">Setores Ativos</h3>
                     <p className="text-5xl font-bold text-green-600 mt-2">{dataBySector.length}</p>
                 </div>
                  <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                    <h3 className="text-lg font-semibold text-slate-600">Média de Membros por Setor</h3>
+                    <h3 className="text-lg font-semibold text-slate-600">Média de Agentes por Setor</h3>
                     <p className="text-5xl font-bold text-amber-600 mt-2">
-                        {dataBySector.length > 0 ? (totalMembers / dataBySector.length).toFixed(1) : 0}
+                        {dataBySector.length > 0 ? (totalAgents / dataBySector.length).toFixed(1) : 0}
                     </p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div id="maritalStatusChart" className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="text-xl font-semibold text-slate-700 mb-4">Membros por Estado Civil</h3>
+                    <h3 className="text-xl font-semibold text-slate-700 mb-4">Agentes por Estado Civil</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
@@ -129,13 +129,13 @@ const Reports: React.FC<ReportsProps> = ({ members }) => {
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value) => `${value} (${(value / totalMembers * 100).toFixed(0)}%)`} />
+                            <Tooltip formatter={(value) => `${value} (${(value / totalAgents * 100).toFixed(0)}%)`} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
                 <div id="sectorChart" className="bg-white p-6 rounded-lg shadow-md">
-                     <h3 className="text-xl font-semibold text-slate-700 mb-4">Membros por Setor Pastoral</h3>
+                     <h3 className="text-xl font-semibold text-slate-700 mb-4">Agentes por Setor Pastoral</h3>
                      <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={dataBySector} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" />
@@ -143,7 +143,7 @@ const Reports: React.FC<ReportsProps> = ({ members }) => {
                             <YAxis allowDecimals={false} />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="value" fill="#82ca9d" name="Membros" />
+                            <Bar dataKey="value" fill="#82ca9d" name="Agentes" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

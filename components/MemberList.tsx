@@ -4,20 +4,20 @@ import { EditIcon, DeleteIcon, AddIcon, UserIcon, DownloadIcon, FileIcon } from 
 import jsPDF from 'jspdf';
 
 interface MemberListProps {
-    members: Member[];
+    agents: Member[];
     onEdit: (id: number) => void;
     onDelete: (id: number) => void;
     onAddNew: () => void;
 }
 
-const MemberCard: React.FC<{ member: Member; onEdit: (id: number) => void; onDelete: (id: number) => void; }> = ({ member, onEdit, onDelete }) => {
+const MemberCard: React.FC<{ agent: Member; onEdit: (id: number) => void; onDelete: (id: number) => void; }> = ({ agent, onEdit, onDelete }) => {
     return (
         <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
             <div className="p-5">
                 <div className="flex items-center space-x-4 mb-4">
                      <div className="flex-shrink-0">
-                        {member.photo ? (
-                            <img className="h-16 w-16 rounded-full object-cover" src={member.photo} alt={member.fullName} />
+                        {agent.photo ? (
+                            <img className="h-16 w-16 rounded-full object-cover" src={agent.photo} alt={agent.fullName} />
                         ) : (
                             <div className="flex-shrink-0 bg-blue-100 rounded-full p-3 text-blue-600 h-16 w-16 flex items-center justify-center">
                                 <UserIcon className="h-8 w-8" />
@@ -25,24 +25,24 @@ const MemberCard: React.FC<{ member: Member; onEdit: (id: number) => void; onDel
                         )}
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800">{member.fullName}</h3>
-                        <p className="text-sm text-amber-600 font-semibold">{member.role}</p>
+                        <h3 className="text-lg font-bold text-slate-800">{agent.fullName}</h3>
+                        <p className="text-sm text-amber-600 font-semibold">{agent.role}</p>
                     </div>
                 </div>
                 
                 <div className="space-y-2 text-sm text-slate-600">
-                    <p><i className="fas fa-sitemap mr-2 text-slate-400"></i> {member.sector}</p>
-                    <p><i className="fas fa-church mr-2 text-slate-400"></i> {member.parish} / {member.community}</p>
-                    <p><i className="fas fa-phone mr-2 text-slate-400"></i> {member.phone}</p>
-                    <p><i className="fas fa-map-marker-alt mr-2 text-slate-400"></i> {member.city}, {member.state}</p>
-                    <p><i className="fas fa-ring mr-2 text-slate-400"></i> {member.maritalStatus}</p>
+                    <p><i className="fas fa-sitemap mr-2 text-slate-400"></i> {agent.sector}</p>
+                    <p><i className="fas fa-church mr-2 text-slate-400"></i> {agent.parish} / {agent.community}</p>
+                    <p><i className="fas fa-phone mr-2 text-slate-400"></i> {agent.phone}</p>
+                    <p><i className="fas fa-map-marker-alt mr-2 text-slate-400"></i> {agent.city}, {agent.state}</p>
+                    <p><i className="fas fa-ring mr-2 text-slate-400"></i> {agent.maritalStatus}</p>
                 </div>
             </div>
             <div className="bg-slate-50 px-5 py-3 flex justify-end space-x-2">
-                <button onClick={() => onEdit(member.id)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors duration-200" aria-label={`Editar ${member.fullName}`}>
+                <button onClick={() => onEdit(agent.id)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors duration-200" aria-label={`Editar ${agent.fullName}`}>
                     <EditIcon className="h-5 w-5" />
                 </button>
-                <button onClick={() => onDelete(member.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors duration-200" aria-label={`Excluir ${member.fullName}`}>
+                <button onClick={() => onDelete(agent.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors duration-200" aria-label={`Excluir ${agent.fullName}`}>
                     <DeleteIcon className="h-5 w-5" />
                 </button>
             </div>
@@ -51,7 +51,7 @@ const MemberCard: React.FC<{ member: Member; onEdit: (id: number) => void; onDel
 };
 
 
-const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAddNew }) => {
+const MemberList: React.FC<MemberListProps> = ({ agents, onEdit, onDelete, onAddNew }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterSector, setFilterSector] = useState('');
     const [filterMaritalStatus, setFilterMaritalStatus] = useState('');
@@ -61,21 +61,21 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
     const sectors = Object.values(Sector);
     const roles = Object.values(Role);
 
-    const filteredMembers = useMemo(() => {
-        return members.filter(member => {
-            const searchMatch = member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                member.phone.includes(searchTerm);
-            const sectorMatch = filterSector === '' || member.sector === filterSector;
-            const maritalStatusMatch = filterMaritalStatus === '' || member.maritalStatus === filterMaritalStatus;
-            const roleMatch = filterRole === '' || member.role === filterRole;
+    const filteredAgents = useMemo(() => {
+        return agents.filter(agent => {
+            const searchMatch = agent.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                agent.phone.includes(searchTerm);
+            const sectorMatch = filterSector === '' || agent.sector === filterSector;
+            const maritalStatusMatch = filterMaritalStatus === '' || agent.maritalStatus === filterMaritalStatus;
+            const roleMatch = filterRole === '' || agent.role === filterRole;
 
             return searchMatch && sectorMatch && maritalStatusMatch && roleMatch;
         });
-    }, [members, searchTerm, filterSector, filterMaritalStatus, filterRole]);
+    }, [agents, searchTerm, filterSector, filterMaritalStatus, filterRole]);
 
     const handleExportCSV = () => {
-        if (filteredMembers.length === 0) {
-            alert("Não há membros para exportar com os filtros selecionados.");
+        if (filteredAgents.length === 0) {
+            alert("Não há agentes para exportar com os filtros selecionados.");
             return;
         }
     
@@ -86,27 +86,27 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             "Função", "Data de Ingresso", "Observações"
         ];
     
-        const rows = filteredMembers.map(member => [
-            `"${member.fullName.replace(/"/g, '""')}"`,
-            member.birthDate,
-            member.maritalStatus,
-            `"${member.spouseName?.replace(/"/g, '""') || ''}"`,
-            member.weddingDate || '',
-            member.phone,
-            member.email,
-            member.cep,
-            `"${member.street.replace(/"/g, '""')}"`,
-            `"${member.neighborhood.replace(/"/g, '""')}"`,
-            `"${member.city.replace(/"/g, '""')}"`,
-            member.state,
-            member.hasVehicle ? 'Sim' : 'Não',
-            `"${member.vehicleModel?.replace(/"/g, '""') || ''}"`,
-            `"${member.parish.replace(/"/g, '""')}"`,
-            `"${member.community.replace(/"/g, '""')}"`,
-            member.sector,
-            member.role,
-            member.joinDate,
-            `"${member.notes?.replace(/"/g, '""') || ''}"`,
+        const rows = filteredAgents.map(agent => [
+            `"${agent.fullName.replace(/"/g, '""')}"`,
+            agent.birthDate,
+            agent.maritalStatus,
+            `"${agent.spouseName?.replace(/"/g, '""') || ''}"`,
+            agent.weddingDate || '',
+            agent.phone,
+            agent.email,
+            agent.cep,
+            `"${agent.street.replace(/"/g, '""')}"`,
+            `"${agent.neighborhood.replace(/"/g, '""')}"`,
+            `"${agent.city.replace(/"/g, '""')}"`,
+            agent.state,
+            agent.hasVehicle ? 'Sim' : 'Não',
+            `"${agent.vehicleModel?.replace(/"/g, '""') || ''}"`,
+            `"${agent.parish.replace(/"/g, '""')}"`,
+            `"${agent.community.replace(/"/g, '""')}"`,
+            agent.sector,
+            agent.role,
+            agent.joinDate,
+            `"${agent.notes?.replace(/"/g, '""') || ''}"`,
         ].join(','));
     
         const csvContent = [headers.join(','), ...rows].join('\n');
@@ -114,7 +114,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', 'membros_pastoral_familiar.csv');
+        link.setAttribute('download', 'agentes_pastoral_familiar.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -123,8 +123,8 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
     };
     
     const handleExportPDF = async () => {
-        if (filteredMembers.length === 0) {
-            alert("Não há membros para exportar com os filtros selecionados.");
+        if (filteredAgents.length === 0) {
+            alert("Não há agentes para exportar com os filtros selecionados.");
             return;
         }
     
@@ -138,15 +138,15 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             const FONT_SIZE_HEADER = 12;
             const LINE_HEIGHT = 7;
     
-            for (let i = 0; i < filteredMembers.length; i++) {
-                const member = filteredMembers[i];
+            for (let i = 0; i < filteredAgents.length; i++) {
+                const agent = filteredAgents[i];
                 if (i > 0) doc.addPage();
     
                 let y = 20;
     
                 doc.setFontSize(FONT_SIZE_TITLE);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Ficha Cadastral de Membro', pageWidth / 2, y, { align: 'center' });
+                doc.text('Ficha Cadastral de Agente', pageWidth / 2, y, { align: 'center' });
                 y += LINE_HEIGHT * 2;
     
                 const photoX = margin;
@@ -154,10 +154,10 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
                 const photoSize = 40;
                 doc.setDrawColor(150);
                 doc.rect(photoX, photoY, photoSize, photoSize);
-                if (member.photo) {
+                if (agent.photo) {
                     try {
-                        const photoFormat = member.photo.substring(member.photo.indexOf('/') + 1, member.photo.indexOf(';'));
-                        doc.addImage(member.photo, photoFormat.toUpperCase(), photoX + 1, photoY + 1, photoSize - 2, photoSize - 2);
+                        const photoFormat = agent.photo.substring(agent.photo.indexOf('/') + 1, agent.photo.indexOf(';'));
+                        doc.addImage(agent.photo, photoFormat.toUpperCase(), photoX + 1, photoY + 1, photoSize - 2, photoSize - 2);
                     } catch (e) {
                         doc.setFontSize(8);
                         doc.text('Foto\ninválida', photoX + photoSize / 2, photoY + photoSize / 2, { align: 'center' });
@@ -179,12 +179,12 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
                     currentY += LINE_HEIGHT;
                 }
                 
-                drawFieldInline('Nome Completo:', member.fullName);
-                if (member.birthDate) drawFieldInline('Nascimento:', new Date(member.birthDate + 'T00:00:00').toLocaleDateString('pt-BR'));
-                drawFieldInline('Estado Civil:', member.maritalStatus);
-                if (member.maritalStatus === MaritalStatus.CASADO) {
-                    drawFieldInline('Cônjuge:', member.spouseName);
-                    if (member.weddingDate) drawFieldInline('Casamento:', new Date(member.weddingDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                drawFieldInline('Nome Completo:', agent.fullName);
+                if (agent.birthDate) drawFieldInline('Nascimento:', new Date(agent.birthDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                drawFieldInline('Estado Civil:', agent.maritalStatus);
+                if (agent.maritalStatus === MaritalStatus.CASADO) {
+                    drawFieldInline('Cônjuge:', agent.spouseName);
+                    if (agent.weddingDate) drawFieldInline('Casamento:', new Date(agent.weddingDate + 'T00:00:00').toLocaleDateString('pt-BR'));
                 }
     
                 y = photoY + photoSize + 15;
@@ -210,35 +210,35 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
                 };
     
                 drawSection('Contato');
-                drawField('Telefone / WhatsApp:', member.phone);
-                drawField('E-mail:', member.email);
+                drawField('Telefone / WhatsApp:', agent.phone);
+                drawField('E-mail:', agent.email);
                 y += LINE_HEIGHT / 2;
     
                 drawSection('Endereço');
-                drawField('CEP:', member.cep);
-                drawField('Endereço:', member.street);
-                drawField('Bairro:', member.neighborhood);
-                drawField('Cidade / UF:', `${member.city} / ${member.state}`);
+                drawField('CEP:', agent.cep);
+                drawField('Endereço:', agent.street);
+                drawField('Bairro:', agent.neighborhood);
+                drawField('Cidade / UF:', `${agent.city} / ${agent.state}`);
                 y += LINE_HEIGHT / 2;
     
                 drawSection('Informações Pastorais');
-                drawField('Paróquia:', member.parish);
-                drawField('Comunidade:', member.community);
-                drawField('Setor Pastoral:', member.sector);
-                drawField('Função:', member.role);
-                if (member.joinDate) drawField('Data de Ingresso:', new Date(member.joinDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                drawField('Paróquia:', agent.parish);
+                drawField('Comunidade:', agent.community);
+                drawField('Setor Pastoral:', agent.sector);
+                drawField('Função:', agent.role);
+                if (agent.joinDate) drawField('Data de Ingresso:', new Date(agent.joinDate + 'T00:00:00').toLocaleDateString('pt-BR'));
                 y += LINE_HEIGHT / 2;
     
                 drawSection('Outras Informações');
-                drawField('Possui Veículo:', member.hasVehicle ? 'Sim' : 'Não');
-                if (member.hasVehicle) drawField('Modelo do Veículo:', member.vehicleModel);
-                if (member.notes) {
+                drawField('Possui Veículo:', agent.hasVehicle ? 'Sim' : 'Não');
+                if (agent.hasVehicle) drawField('Modelo do Veículo:', agent.vehicleModel);
+                if (agent.notes) {
                     y += LINE_HEIGHT / 2;
                     doc.setFont('helvetica', 'bold');
                     doc.text('Observações:', margin, y);
                     y += LINE_HEIGHT;
                     doc.setFont('helvetica', 'normal');
-                    const notesLines = doc.splitTextToSize(member.notes, pageWidth - margin * 2);
+                    const notesLines = doc.splitTextToSize(agent.notes, pageWidth - margin * 2);
                     doc.text(notesLines, margin, y);
                 }
             }
@@ -292,7 +292,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
             </div>
             
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-700">Membros Cadastrados ({filteredMembers.length})</h2>
+                <h2 className="text-2xl font-bold text-slate-700">Agentes Cadastrados ({filteredAgents.length})</h2>
                 <div className="flex items-center space-x-2">
                      <button 
                         onClick={handleExportCSV}
@@ -314,20 +314,20 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
                         className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                         <AddIcon className="h-5 w-5" />
-                        <span>Novo Membro</span>
+                        <span>Novo Agente</span>
                     </button>
                 </div>
             </div>
 
-            {filteredMembers.length > 0 ? (
+            {filteredAgents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredMembers.map(member => (
-                        <MemberCard key={member.id} member={member} onEdit={onEdit} onDelete={onDelete} />
+                    {filteredAgents.map(agent => (
+                        <MemberCard key={agent.id} agent={agent} onEdit={onEdit} onDelete={onDelete} />
                     ))}
                 </div>
             ) : (
                 <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                    <p className="text-slate-500">Nenhum membro encontrado com os filtros selecionados.</p>
+                    <p className="text-slate-500">Nenhum agente encontrado com os filtros selecionados.</p>
                 </div>
             )}
         </div>

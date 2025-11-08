@@ -3,7 +3,7 @@ import { Member, MaritalStatus, Sector, Role } from '../types';
 import { UserIcon, InfoIcon } from './icons';
 
 interface MemberFormProps {
-    memberToEdit: Member | null;
+    agentToEdit: Member | null;
     onSave: (member: Member) => void;
     onCancel: () => void;
 }
@@ -32,7 +32,7 @@ const Tooltip: React.FC<{ text: string, children: React.ReactNode }> = ({ text, 
 );
 
 
-const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel }) => {
+const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel }) => {
     const initialState: Omit<Member, 'id'> = {
         fullName: '',
         photo: '',
@@ -62,13 +62,13 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
 
     useEffect(() => {
-        if (memberToEdit) {
-            setFormState(memberToEdit);
+        if (agentToEdit) {
+            setFormState(agentToEdit);
         } else {
             setFormState(initialState);
         }
         setErrors({});
-    }, [memberToEdit]);
+    }, [agentToEdit]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -161,7 +161,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
     const validate = () => {
         const newErrors: Partial<Record<keyof Member, string>> = {};
-        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'sector', 'role'];
+        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
         
         requiredFields.forEach(field => {
             if (!formState[field]) {
@@ -196,7 +196,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
     
     return (
         <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">{memberToEdit ? 'Editar Membro' : 'Cadastrar Novo Membro'}</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">{agentToEdit ? 'Editar Agente' : 'Cadastrar Novo Agente'}</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -206,10 +206,10 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
 
                      <div className="flex items-center space-x-4 mt-1">
                         {formState.photo ?
-                           <img className="h-20 w-20 object-cover rounded-full" src={formState.photo} alt="Foto do membro"/> :
+                           <img className="h-20 w-20 object-cover rounded-full" src={formState.photo} alt="Foto do agente"/> :
                            <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400"><UserIcon className="w-10 h-10" /></div>
                         }
-                        <FormField name="photo" label="Foto do Membro" error={errors.photo}>
+                        <FormField name="photo" label="Foto do Agente" error={errors.photo}>
                            <input id="photo" type="file" name="photo" onChange={handleFileChange} accept="image/*" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                         </FormField>
                     </div>
@@ -298,7 +298,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                      <FormField name="parish" label="Paróquia que participa*" error={errors.parish}>
                         <input id="parish" type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
-                     <FormField name="community" label="Comunidade" error={errors.community}>
+                     <FormField name="community" label="Comunidade*" error={errors.community}>
                         <input id="community" type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
                     <FormField name="sector" label="Setor Pastoral*" error={errors.sector}>
@@ -311,7 +311,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ memberToEdit, onSave, onCancel 
                             {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                     </FormField>
-                     <FormField name="joinDate" label="Data de Ingresso na Pastoral" error={errors.joinDate}>
+                     <FormField name="joinDate" label="Data de Ingresso na Pastoral*" error={errors.joinDate}>
                         <input id="joinDate" type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                     </FormField>
                     
