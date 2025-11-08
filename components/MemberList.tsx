@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Member, MaritalStatus, Role, Sector } from '../types';
-import { EditIcon, DeleteIcon, AddIcon, UserIcon, DownloadIcon } from './icons';
+import { EditIcon, DeleteIcon, AddIcon, UserIcon, DownloadIcon, FileIcon } from './icons';
+import jsPDF from 'jspdf';
 
 interface MemberListProps {
     members: Member[];
@@ -55,6 +56,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
     const [filterSector, setFilterSector] = useState('');
     const [filterMaritalStatus, setFilterMaritalStatus] = useState('');
     const [filterRole, setFilterRole] = useState('');
+    const [isExportingPDF, setIsExportingPDF] = useState(false);
 
     const sectors = Object.values(Sector);
     const roles = Object.values(Role);
@@ -119,6 +121,136 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
+    
+    const handleExportPDF = async () => {
+        if (filteredMembers.length === 0) {
+            alert("Não há membros para exportar com os filtros selecionados.");
+            return;
+        }
+    
+        setIsExportingPDF(true);
+        try {
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 15;
+            const FONT_SIZE_NORMAL = 10;
+            const FONT_SIZE_TITLE = 16;
+            const FONT_SIZE_HEADER = 12;
+            const LINE_HEIGHT = 7;
+    
+            for (let i = 0; i < filteredMembers.length; i++) {
+                const member = filteredMembers[i];
+                if (i > 0) doc.addPage();
+    
+                let y = 20;
+    
+                doc.setFontSize(FONT_SIZE_TITLE);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Ficha Cadastral de Membro', pageWidth / 2, y, { align: 'center' });
+                y += LINE_HEIGHT * 2;
+    
+                const photoX = margin;
+                const photoY = y;
+                const photoSize = 40;
+                doc.setDrawColor(150);
+                doc.rect(photoX, photoY, photoSize, photoSize);
+                if (member.photo) {
+                    try {
+                        const photoFormat = member.photo.substring(member.photo.indexOf('/') + 1, member.photo.indexOf(';'));
+                        doc.addImage(member.photo, photoFormat.toUpperCase(), photoX + 1, photoY + 1, photoSize - 2, photoSize - 2);
+                    } catch (e) {
+                        doc.setFontSize(8);
+                        doc.text('Foto\ninválida', photoX + photoSize / 2, photoY + photoSize / 2, { align: 'center' });
+                    }
+                } else {
+                    doc.setFontSize(8);
+                    doc.text('Sem Foto', photoX + photoSize / 2, photoY + photoSize / 2, { align: 'center' });
+                }
+    
+                let textX = photoX + photoSize + 10;
+                let currentY = y + 5;
+                const drawFieldInline = (label: string, value: string | undefined | null) => {
+                    if(!value) return;
+                    doc.setFontSize(FONT_SIZE_NORMAL);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(label, textX, currentY);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(value, textX + 40, currentY);
+                    currentY += LINE_HEIGHT;
+                }
+                
+                drawFieldInline('Nome Completo:', member.fullName);
+                if (member.birthDate) drawFieldInline('Nascimento:', new Date(member.birthDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                drawFieldInline('Estado Civil:', member.maritalStatus);
+                if (member.maritalStatus === MaritalStatus.CASADO) {
+                    drawFieldInline('Cônjuge:', member.spouseName);
+                    if (member.weddingDate) drawFieldInline('Casamento:', new Date(member.weddingDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                }
+    
+                y = photoY + photoSize + 15;
+    
+                const drawSection = (title: string) => {
+                    doc.setFontSize(FONT_SIZE_HEADER);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(title, margin, y);
+                    doc.setDrawColor(0);
+                    doc.line(margin, y + 2, pageWidth - margin, y + 2);
+                    y += LINE_HEIGHT + 2;
+                };
+    
+                const drawField = (label: string, value: string | undefined | null) => {
+                    if (!value || value.trim() === '') return;
+                    doc.setFontSize(FONT_SIZE_NORMAL);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(label, margin, y);
+                    doc.setFont('helvetica', 'normal');
+                    const textLines = doc.splitTextToSize(value, pageWidth - margin * 2 - 50);
+                    doc.text(textLines, margin + 50, y);
+                    y += (textLines.length * LINE_HEIGHT);
+                };
+    
+                drawSection('Contato');
+                drawField('Telefone / WhatsApp:', member.phone);
+                drawField('E-mail:', member.email);
+                y += LINE_HEIGHT / 2;
+    
+                drawSection('Endereço');
+                drawField('CEP:', member.cep);
+                drawField('Endereço:', member.street);
+                drawField('Bairro:', member.neighborhood);
+                drawField('Cidade / UF:', `${member.city} / ${member.state}`);
+                y += LINE_HEIGHT / 2;
+    
+                drawSection('Informações Pastorais');
+                drawField('Paróquia:', member.parish);
+                drawField('Comunidade:', member.community);
+                drawField('Setor Pastoral:', member.sector);
+                drawField('Função:', member.role);
+                if (member.joinDate) drawField('Data de Ingresso:', new Date(member.joinDate + 'T00:00:00').toLocaleDateString('pt-BR'));
+                y += LINE_HEIGHT / 2;
+    
+                drawSection('Outras Informações');
+                drawField('Possui Veículo:', member.hasVehicle ? 'Sim' : 'Não');
+                if (member.hasVehicle) drawField('Modelo do Veículo:', member.vehicleModel);
+                if (member.notes) {
+                    y += LINE_HEIGHT / 2;
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Observações:', margin, y);
+                    y += LINE_HEIGHT;
+                    doc.setFont('helvetica', 'normal');
+                    const notesLines = doc.splitTextToSize(member.notes, pageWidth - margin * 2);
+                    doc.text(notesLines, margin, y);
+                }
+            }
+    
+            doc.save('fichas_cadastrais.pdf');
+        } catch (error) {
+            console.error("Erro ao gerar o PDF:", error);
+            alert("Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.");
+        } finally {
+            setIsExportingPDF(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -167,7 +299,15 @@ const MemberList: React.FC<MemberListProps> = ({ members, onEdit, onDelete, onAd
                         className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
                         <DownloadIcon className="h-5 w-5" />
-                        <span>Exportar</span>
+                        <span>Exportar CSV</span>
+                    </button>
+                    <button 
+                        onClick={handleExportPDF}
+                        disabled={isExportingPDF}
+                        className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                    >
+                        <FileIcon className="h-5 w-5" />
+                        <span>{isExportingPDF ? 'Gerando...' : 'Exportar Fichas (PDF)'}</span>
                     </button>
                     <button 
                         onClick={onAddNew}
