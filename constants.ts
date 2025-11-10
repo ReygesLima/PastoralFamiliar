@@ -1,11 +1,9 @@
-
 import { Member, MaritalStatus, Sector, Role } from './types';
 
 export const INITIAL_AGENTS: Member[] = [
     {
         id: 1,
-        // FIX: Added missing 'login' property.
-        login: 'joao.silva',
+        Login: 'joao.silva',
         photo: '',
         fullName: 'João da Silva e Maria da Silva',
         birthDate: '1980-05-15',
@@ -30,8 +28,7 @@ export const INITIAL_AGENTS: Member[] = [
     },
     {
         id: 2,
-        // FIX: Added missing 'login' property.
-        login: 'carlos.souza',
+        Login: 'carlos.souza',
         photo: '',
         fullName: 'Carlos Souza',
         birthDate: '1992-11-20',
@@ -53,8 +50,7 @@ export const INITIAL_AGENTS: Member[] = [
     },
     {
         id: 3,
-        // FIX: Added missing 'login' property.
-        login: 'ana.pereira',
+        Login: 'ana.pereira',
         photo: '',
         fullName: 'Ana Pereira',
         birthDate: '1965-03-30',

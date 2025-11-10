@@ -108,7 +108,7 @@ function App() {
                     .select('*')
                     .order('fullName', { ascending: true });
                 if (supabaseError) throw supabaseError;
-                setAgents(data || []);
+                setAgents(data as Member[] || []);
             } else {
                 setAgents([user]);
             }
@@ -134,55 +134,51 @@ function App() {
     const handleLogin = async (login: string, birthDate: string) => {
         setLoading(true);
         setLoginError(null);
-        const triedCredentials = `Tentativa de login com: login='${login.trim().toUpperCase()}', data de nascimento='${birthDate}'`;
+        const triedCredentials = `Tentativa de login com: login='${login.trim()}', data de nascimento='${birthDate}'`;
         logAndSetError(triedCredentials, "LOGIN_ATTEMPT");
-
+    
         try {
-            const cleanLogin = login.trim().toUpperCase();
+            const cleanLogin = login.trim();
             if (!cleanLogin || !birthDate) {
                 throw new Error("Login e data de nascimento são obrigatórios.");
             }
-            
-            // Solução definitiva: Usa o formato ISO 8601 completo com fuso UTC para a consulta.
-            // Isso elimina qualquer ambiguidade de fuso horário entre o cliente e o banco de dados.
-            const startDate = new Date(birthDate + 'T00:00:00.000Z');
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
-
-            const { data, error: supabaseError } = await supabase
-                .from('membros_pastoral')
-                .select('*')
-                .eq('login', cleanLogin)
-                .gte('birthDate', startDate.toISOString())
-                .lt('birthDate', endDate.toISOString());
-
-            // Log the raw response from the database to help debug login issues
-            const dbResponseLog = `Dados retornados pelo banco de dados: ${JSON.stringify(data, null, 2)}`;
-            logAndSetError(dbResponseLog, 'DB_RESPONSE');
-            console.log("Supabase query response:", data);
-
-
-            if (supabaseError) {
-                console.error(`Supabase login error: ${supabaseError.message}`, supabaseError);
-                logAndSetError(`Erro retornado pelo Supabase: ${supabaseError.message}`, "SUPABASE_ERROR");
+    
+            // SOLUÇÃO DEFINITIVA: Chama a função SQL 'login_agente' via RPC.
+            // Esta função executa a lógica de consulta exata validada pelo usuário.
+            const { data, error: rpcError } = await supabase.rpc('login_agente', {
+                p_login: cleanLogin,
+                p_birth_date: birthDate
+            });
+    
+            const dbResponseLog = `Dados retornados pela função 'login_agente': ${JSON.stringify(data, null, 2)}`;
+            logAndSetError(dbResponseLog, 'DB_RESPONSE_RPC');
+            console.log("Supabase RPC response:", data);
+    
+            if (rpcError) {
+                console.error(`Supabase RPC login error: ${rpcError.message}`, rpcError);
+                logAndSetError(`Erro retornado pelo Supabase (RPC): ${rpcError.message}`, "SUPABASE_RPC_ERROR");
+                if(rpcError.message.includes("function login_agente does not exist")){
+                     throw new Error("A função de login não foi encontrada no banco de dados. Por favor, execute o script do arquivo 'database.sql' no SQL Editor do Supabase.");
+                }
                 throw new Error("Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.");
             }
-
-            if (!data || data.length === 0) {
+    
+            const resultData = data as Member[];
+            if (!resultData || resultData.length === 0) {
                 console.error("Login failed: No agent found with the provided credentials.", triedCredentials);
                 logAndSetError("Nenhum agente encontrado com as credenciais fornecidas.", "LOGIN_FAILURE");
-                throw new Error("Login ou data de nascimento incorretos. Por favor, verifique os dados e tente novamente.");
+                throw new Error("Login ou data de nascimento incorretos. Dica: Se os dados estiverem corretos, verifique se as políticas de segurança (RLS) do Supabase permitem a leitura da tabela 'membros_pastoral'.");
             }
-            
-            if (data.length > 1) {
+    
+            if (resultData.length > 1) {
                 console.error("Login failed: Multiple agents found with the same credentials. This indicates a data integrity issue.", triedCredentials);
                 logAndSetError(`Inconsistência de dados: Múltiplos cadastros encontrados para o mesmo login e data de nascimento. Contate o administrador.`, "DATA_INTEGRITY_ERROR");
                 throw new Error("Existem múltiplos cadastros com as mesmas credenciais. Por favor, contate o administrador do sistema.");
             }
-            
-            // Success, exactly one record found
-            setLoggedInAgent(data[0]);
-
+    
+            // Sucesso, exatamente um registro encontrado
+            setLoggedInAgent(resultData[0]);
+    
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Login failed:", message);
@@ -202,7 +198,6 @@ function App() {
 
         const dataToInsert = {
             ...restOfAgentData,
-            login: restOfAgentData.login.toUpperCase(),
             role: Role.AGENTE,
             weddingDate: restOfAgentData.weddingDate || null,
             spouseName: restOfAgentData.spouseName || null,
@@ -216,12 +211,12 @@ function App() {
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').insert(dataToInsert);
             if (supabaseError) {
-                if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
+                if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_Login_key"')) { // Assuming the key constraint is on "Login"
                     throw new Error("Este login já está em uso. Por favor, escolha outro.");
                 }
                 throw supabaseError;
             }
-            await handleLogin(agentData.login, agentData.birthDate);
+            await handleLogin(agentData.Login, agentData.birthDate);
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error registering agent:", message, err);
@@ -241,7 +236,6 @@ function App() {
 
         const dataToUpsert = {
             ...agentData,
-            login: agentData.login.toUpperCase(),
             weddingDate: agentData.weddingDate || null,
             spouseName: agentData.spouseName || null,
             vehicleModel: agentData.vehicleModel || null,
@@ -255,7 +249,7 @@ function App() {
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').upsert(dataToUpsert);
             if (supabaseError) {
-                 if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
+                 if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_Login_key"')) {
                     throw new Error("Este login já está em uso. Por favor, escolha outro.");
                 }
                 throw supabaseError;
@@ -307,6 +301,7 @@ function App() {
         setAgentToEdit(null);
         setCurrentView('FORM');
     };
+
 
     const handleCancel = () => {
         setAgentToEdit(null);

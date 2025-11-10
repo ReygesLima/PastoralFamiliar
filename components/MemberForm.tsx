@@ -12,7 +12,7 @@ interface MemberFormProps {
 }
 
 const emptyAgent: Omit<Member, 'id' | 'role'> & { id?: number, role?: Role } = {
-    login: '',
+    Login: '',
     photo: '',
     fullName: '',
     birthDate: '',
@@ -365,9 +365,9 @@ const MemberForm: React.FC<MemberFormProps> = ({
                     <FormSection title="Dados Pessoais">
                         <InputField name="fullName" label="Nome Completo" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-6" />
                         <InputField 
-                            name="login" 
+                            name="Login" 
                             label="Login (ex: jose.silva)" 
-                            value={agent.login} 
+                            value={agent.Login} 
                             onChange={handleChange} 
                             required 
                             colSpan="sm:col-span-3" 
