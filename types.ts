@@ -1,8 +1,8 @@
 export enum MaritalStatus {
-    SOLTEIRO = 'Solteiro',
-    CASADO = 'Casado',
-    VIUVO = 'Viúvo',
-    SEPARADO = 'Separado',
+    SOLTEIRO = 'Solteiro(a)',
+    CASADO = 'Casado(a)',
+    VIUVO = 'Viúvo(a)',
+    SEPARADO = 'Separado(a)',
 }
 
 export enum Sector {
@@ -10,6 +10,7 @@ export enum Sector {
     POS_MATRIMONIAL = 'Pós-matrimonial',
     CASOS_ESPECIAIS = 'Casos Especiais',
     SERVICO_A_VIDA = 'Serviço à Vida',
+    COORDENADOR_PAROQUIAL = 'Coordenador Paróquial',
 }
 
 export enum Role {
