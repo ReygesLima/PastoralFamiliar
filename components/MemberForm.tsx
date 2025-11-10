@@ -35,6 +35,7 @@ const Tooltip: React.FC<{ text: string, children: React.ReactNode }> = ({ text, 
 
 const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, isFirstTimeRegister = false, isSelfEditing = false }) => {
     const initialState: Omit<Member, 'id'> = {
+        login: '',
         fullName: '',
         photo: '',
         birthDate: '',
@@ -71,6 +72,15 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
         setErrors({});
     }, [agentToEdit]);
 
+    const generateLogin = (name: string) => {
+        if (!name) return '';
+        const parts = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(' ');
+        if (parts.length > 1) {
+            return `${parts[0]}.${parts[parts.length - 1]}`;
+        }
+        return parts[0];
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         if (errors[name as keyof Member]) {
@@ -81,7 +91,9 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
             });
         }
         
-        if (name === 'hasVehicle') {
+        if (name === 'fullName' && (!formState.login || isFirstTimeRegister)) {
+            setFormState(prev => ({ ...prev, fullName: value, login: generateLogin(value) }));
+        } else if (name === 'hasVehicle') {
             const hasVehicleValue = value === 'true';
             setFormState(prev => {
                 const newState = { ...prev, hasVehicle: hasVehicleValue };
@@ -137,7 +149,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
 
     const validate = () => {
         const newErrors: Partial<Record<keyof Member, string>> = {};
-        const requiredFields: (keyof Member)[] = ['fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
+        const requiredFields: (keyof Member)[] = ['login', 'fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
         
         requiredFields.forEach(field => {
             if (!formState[field]) newErrors[field] = 'Este campo é obrigatório.';
@@ -150,6 +162,8 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
         
         if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) newErrors.email = 'E-mail inválido.';
         if (formState.hasVehicle && !formState.vehicleModel) newErrors.vehicleModel = 'Modelo do veículo é obrigatório se possui veículo.';
+        if (formState.login && !/^[a-z0-9_.]+$/.test(formState.login)) newErrors.login = 'Login deve conter apenas letras minúsculas, números, pontos e underlines.';
+
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -164,7 +178,7 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
     return (
         <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md">
             <h2 className="text-2xl font-bold text-slate-800 mb-6">{isFirstTimeRegister ? 'Primeiro Acesso - Novo Agente' : (isSelfEditing ? 'Meu Cadastro' : (agentToEdit ? 'Editar Agente' : 'Cadastrar Novo Agente'))}</h2>
-            {isSelfEditing && <p className="text-sm text-slate-600 mb-6 -mt-4">Mantenha seus dados sempre atualizados. Para alterar nome, data de nascimento ou função, entre em contato com a coordenação.</p>}
+            {isSelfEditing && <p className="text-sm text-slate-600 mb-6 -mt-4">Mantenha seus dados sempre atualizados. Para alterar nome, login, data de nascimento ou função, entre em contato com a coordenação.</p>}
             
             <form onSubmit={handleSubmit} className="space-y-6">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -184,7 +198,10 @@ const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, 
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
-                    <SectionTitle title="Informações Pessoais e Contato" />
+                    <SectionTitle title="Acesso e Informações Pessoais" />
+                    <FormField name="login" label="Login de Acesso*" error={errors.login}>
+                        <input id="login" type="text" name="login" value={formState.login || ''} onChange={handleChange} disabled={isSelfEditing} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"/>
+                    </FormField>
                     <FormField name="birthDate" label="Data de Nascimento*" error={errors.birthDate}>
                          <input id="birthDate" type="date" name="birthDate" value={formState.birthDate || ''} onChange={handleChange} disabled={isSelfEditing} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"/>
                     </FormField>

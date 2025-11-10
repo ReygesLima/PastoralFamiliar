@@ -1,3 +1,4 @@
+
 export enum MaritalStatus {
     SOLTEIRO = 'Solteiro',
     CASADO = 'Casado',
@@ -19,6 +20,7 @@ export enum Role {
 
 export interface Member {
     id: number;
+    login: string;
     photo?: string;
     fullName: string;
     birthDate: string;

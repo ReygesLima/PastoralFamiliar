@@ -4,7 +4,7 @@ import { Member } from '../types';
 import { LogoIcon } from './icons';
 
 interface LoginProps {
-    onLogin: (fullName: string, birthDate: string) => void;
+    onLogin: (login: string, birthDate: string) => void;
     onRegister: (agentData: Member) => void;
     loginError: string | null;
     generalError: string | null;
@@ -12,12 +12,12 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalError }) => {
     const [isRegistering, setIsRegistering] = useState(true);
-    const [fullName, setFullName] = useState('');
+    const [login, setLogin] = useState('');
     const [birthDate, setBirthDate] = useState('');
 
     const handleLoginSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onLogin(fullName, birthDate);
+        onLogin(login, birthDate);
     };
     
     const handleRegisterSave = (agentData: Member) => {
@@ -57,9 +57,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
                         <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">Acessar meu Cadastro</h2>
                         <form onSubmit={handleLoginSubmit} className="space-y-6">
                             <div>
-                                <label htmlFor="fullName" className="block text-sm font-medium text-slate-700">Nome Completo</label>
+                                <label htmlFor="login" className="block text-sm font-medium text-slate-700">Login</label>
                                 <input
-                                    id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required
+                                    id="login" type="text" value={login} onChange={(e) => setLogin(e.target.value)} required
                                     className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>

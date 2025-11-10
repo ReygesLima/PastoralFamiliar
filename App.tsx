@@ -93,14 +93,14 @@ function App() {
         }
     }, [loggedInAgent]);
     
-    const handleLogin = async (fullName: string, birthDate: string) => {
+    const handleLogin = async (login: string, birthDate: string) => {
         setLoading(true);
         setLoginError(null);
         try {
             const { data, error: supabaseError } = await supabase
                 .from('membros_pastoral')
                 .select('*')
-                .eq('fullName', fullName)
+                .eq('login', login.toLowerCase())
                 .eq('birthDate', birthDate)
                 .single();
             if (supabaseError || !data) {
@@ -125,6 +125,7 @@ function App() {
 
         const dataToInsert = {
             ...restOfAgentData,
+            login: restOfAgentData.login.toLowerCase(),
             role: Role.AGENTE,
             weddingDate: restOfAgentData.weddingDate || null,
             spouseName: restOfAgentData.spouseName || null,
@@ -137,12 +138,17 @@ function App() {
         setError(null);
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').insert(dataToInsert);
-            if (supabaseError) throw supabaseError;
-            await handleLogin(agentData.fullName, agentData.birthDate);
+            if (supabaseError) {
+                if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
+                    throw new Error("Este login já está em uso. Por favor, escolha outro.");
+                }
+                throw supabaseError;
+            }
+            await handleLogin(agentData.login, agentData.birthDate);
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error registering agent:", message, err);
-            setError(`Falha ao cadastrar: ${message}. Verifique se o e-mail já não está em uso.`);
+            setError(`Falha ao cadastrar: ${message}.`);
             setTimeout(() => setError(null), 5000);
         } finally {
             setLoading(false);
@@ -158,6 +164,7 @@ function App() {
 
         const dataToUpsert = {
             ...agentData,
+            login: agentData.login.toLowerCase(),
             weddingDate: agentData.weddingDate || null,
             spouseName: agentData.spouseName || null,
             vehicleModel: agentData.vehicleModel || null,
@@ -170,7 +177,12 @@ function App() {
 
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').upsert(dataToUpsert);
-            if (supabaseError) throw supabaseError;
+            if (supabaseError) {
+                 if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
+                    throw new Error("Este login já está em uso. Por favor, escolha outro.");
+                }
+                throw supabaseError;
+            }
             
             if (loggedInAgent.id === agentData.id) {
                 setLoggedInAgent(agentData);

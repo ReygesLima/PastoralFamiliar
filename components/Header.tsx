@@ -12,12 +12,19 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isCoordinator = loggedInAgent.role === Role.COORDENADOR;
 
-    // FIX: Explicitly typed navItems to ensure the `view` property is correctly inferred as type `View`
-    // instead of being widened to `string`, which was causing a type error when passed to the NavLink component.
+    // FIX: Refactored navItems creation to use intermediate typed arrays.
+    // This provides a clear contextual type for the objects within, preventing TypeScript
+    // from widening the 'view' property to a generic 'string' inside the conditional logic.
+    const coordinatorNavItems: { view: View; label: string; icon: string; }[] = [
+        { view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' },
+        { view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' },
+    ];
+    const agentNavItems: { view: View; label: string; icon: string; }[] = [
+        { view: 'FORM', label: 'Meu Cadastro', icon: 'fa-user-edit' },
+    ];
     const navItems: { view: View; label: string; icon: string }[] = [
-        ...(isCoordinator ? [{ view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' }] : []),
-        ...(isCoordinator ? [{ view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' }] : []),
-        ...(!isCoordinator ? [{ view: 'FORM', label: 'Meu Cadastro', icon: 'fa-user-edit' }] : []),
+        ...(isCoordinator ? coordinatorNavItems : []),
+        ...(!isCoordinator ? agentNavItems : []),
         { view: 'ABOUT', label: 'Sobre', icon: 'fa-info-circle' },
     ];
 
