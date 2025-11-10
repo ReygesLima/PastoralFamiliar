@@ -1,34 +1,44 @@
 import React, { useState } from 'react';
-import { View } from '../types';
+import { View, Member, Role } from '../types';
 import { LogoIcon, MenuIcon, CloseIcon } from './icons';
 
 interface HeaderProps {
     setCurrentView: (view: View) => void;
+    loggedInAgent: Member;
+    onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ setCurrentView }) => {
+const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const isCoordinator = loggedInAgent.role === Role.COORDENADOR;
 
-    const navItems = [
-        { view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' },
-        { view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' },
+    // FIX: Explicitly typed navItems to ensure the `view` property is correctly inferred as type `View`
+    // instead of being widened to `string`, which was causing a type error when passed to the NavLink component.
+    const navItems: { view: View; label: string; icon: string }[] = [
+        ...(isCoordinator ? [{ view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' }] : []),
+        ...(isCoordinator ? [{ view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' }] : []),
+        ...(!isCoordinator ? [{ view: 'FORM', label: 'Meu Cadastro', icon: 'fa-user-edit' }] : []),
         { view: 'ABOUT', label: 'Sobre', icon: 'fa-info-circle' },
-    ] as const;
+    ];
 
-    // FIX: Changed NavLink to be an explicit React.FC to solve TypeScript error with the 'key' prop.
     interface NavLinkProps {
-        view: View;
+        // FIX: The view prop is made optional for NavLinks that are just buttons with onClick handlers.
+        view?: View;
         label: string;
         icon: string;
+        isButton?: boolean;
+        onClick?: () => void;
     }
 
-    const NavLink: React.FC<NavLinkProps> = ({ view, label, icon }) => (
+    const NavLink: React.FC<NavLinkProps> = ({ view, label, icon, isButton = false, onClick }) => (
         <button
             onClick={() => {
-                setCurrentView(view);
+                if (onClick) onClick();
+                // FIX: Check if view exists before setting it, as it's now optional.
+                else if (view) setCurrentView(view);
                 setIsMenuOpen(false);
             }}
-            className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-md transition-colors duration-200"
+            className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-md transition-colors duration-200 w-full md:w-auto text-left"
         >
             <i className={`fas ${icon} text-amber-500`}></i>
             <span>{label}</span>
@@ -47,13 +57,13 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView }) => {
                         </div>
                     </div>
 
-                    {/* Desktop Menu */}
                     <nav className="hidden md:flex items-center space-x-2">
-                        {/* FIX: Pass props explicitly to avoid TypeScript error with JSX spread and 'key' prop. */}
+                        <span className="text-slate-600 text-sm mr-4">Olá, {loggedInAgent.fullName.split(' ')[0]}!</span>
                         {navItems.map(item => <NavLink key={item.view} view={item.view} label={item.label} icon={item.icon} />)}
+                         {/* FIX: Removed the 'view' prop from the logout button as it's not needed and was causing a type error. */}
+                         <NavLink label="Sair" icon="fa-sign-out-alt" isButton onClick={onLogout} />
                     </nav>
 
-                    {/* Mobile Menu Button */}
                     <div className="md:hidden">
                         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-slate-600 hover:text-blue-600 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             {isMenuOpen ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
@@ -62,12 +72,14 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView }) => {
                 </div>
             </div>
 
-            {/* Mobile Menu */}
             {isMenuOpen && (
                 <div className="md:hidden bg-white border-t border-slate-200">
                     <nav className="flex flex-col p-4 space-y-2">
-                        {/* FIX: Pass props explicitly to avoid TypeScript error with JSX spread and 'key' prop. */}
+                        <span className="px-3 py-2 text-slate-800 font-semibold">Olá, {loggedInAgent.fullName.split(' ')[0]}!</span>
                         {navItems.map(item => <NavLink key={item.view} view={item.view} label={item.label} icon={item.icon} />)}
+                         <div className="border-t my-2"></div>
+                         {/* FIX: Removed the 'view' prop from the logout button as it's not needed and was causing a type error. */}
+                         <NavLink label="Sair" icon="fa-sign-out-alt" isButton onClick={onLogout} />
                     </nav>
                 </div>
             )}

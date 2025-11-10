@@ -4,10 +4,10 @@ import MemberList from './components/MemberList';
 import MemberForm from './components/MemberForm';
 import Reports from './components/Reports';
 import About from './components/About';
-import ConfigPanel from './components/ConfigPanel'; // Importar o novo componente
-import { Member, View } from './types';
+import ConfigPanel from './components/ConfigPanel';
+import Login from './components/Login';
+import { Member, View, Role } from './types';
 import { supabase } from './lib/supabaseClient';
-import { INITIAL_AGENTS } from './constants';
 
 function App() {
     const [agents, setAgents] = useState<Member[]>([]);
@@ -15,117 +15,168 @@ function App() {
     const [agentToEdit, setAgentToEdit] = useState<Member | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isDbEmpty, setIsDbEmpty] = useState(false);
-    const [showConfigPanel, setShowConfigPanel] = useState(false); // Novo estado
-
-    // Função robusta para extrair a mensagem de erro
+    const [loginError, setLoginError] = useState<string | null>(null);
+    const [showConfigPanel, setShowConfigPanel] = useState(false);
+    const [loggedInAgent, setLoggedInAgent] = useState<Member | null>(null);
+    
     const getErrorMessage = (error: unknown): string => {
-        // Prioridade 1: Erros com uma propriedade 'message' (padrão de Error e Supabase)
         if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
             return (error as any).message;
         }
-        
-        // Prioridade 2: Se o próprio erro for uma string
         if (typeof error === 'string') {
             return error;
         }
-
-        // Fallback: Tentar transformar o erro em uma string JSON
         try {
             const stringified = JSON.stringify(error);
-            // Evitar retornar 'null' ou '{}' que não são informativos
             if (stringified && stringified !== 'null' && stringified !== '{}') {
                 return stringified;
             }
-        } catch {
-            // Ignorar erros de stringify (ex: referências circulares)
-        }
-
-        // Último recurso
+        } catch {}
         return 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.';
     };
-
-    async function fetchAgents() {
+    
+    async function checkDbConnection() {
         setLoading(true);
         setError(null);
-        setIsDbEmpty(false);
-        setShowConfigPanel(false); // Reseta o painel de config a cada tentativa
+        setShowConfigPanel(false);
         try {
-            const { data, error: supabaseError } = await supabase
-                .from('membros_pastoral')
-                .select('*')
-                .order('fullName', { ascending: true });
-
-            if (supabaseError) {
-                throw supabaseError;
-            }
-
-            if (data && data.length === 0) {
-                setIsDbEmpty(true);
-            } else {
-                setAgents(data || []);
-            }
-
+            const { error: supabaseError } = await supabase.from('membros_pastoral').select('id').limit(1);
+            if (supabaseError) throw supabaseError;
         } catch (err: any) {
             const message = getErrorMessage(err);
-            console.error("Error fetching agents:", message, err);
-            setError(`Falha ao carregar os agentes: ${message}.`);
-            
-            // Verifica se é um erro de autenticação/RLS/tabela não encontrada para mostrar o painel de configuração
+            console.error("Error checking DB connection:", message, err);
+            setError(`Falha ao conectar ao banco de dados: ${message}.`);
             const isAuthError = message.includes('JWT') || message.includes('API key') || err.status === 401;
             const isTableError = (message.includes('relation') && message.includes('does not exist')) || message.includes('Could not find the table') || err.status === 404;
-
             if (isAuthError || isTableError) {
                  setShowConfigPanel(true);
             }
-
         } finally {
             setLoading(false);
         }
     }
 
     useEffect(() => {
-        fetchAgents();
+        checkDbConnection();
     }, []);
     
-    const seedDatabase = async () => {
+    async function fetchDataForUser(user: Member) {
         setLoading(true);
         setError(null);
         try {
-            const agentsToInsert = INITIAL_AGENTS.map(({ id, ...rest }) => rest);
-            const { error: insertError } = await supabase.from('membros_pastoral').insert(agentsToInsert);
-
-            if (insertError) {
-                throw insertError;
+            if (user.role === Role.COORDENADOR) {
+                const { data, error: supabaseError } = await supabase
+                    .from('membros_pastoral')
+                    .select('*')
+                    .order('fullName', { ascending: true });
+                if (supabaseError) throw supabaseError;
+                setAgents(data || []);
+            } else {
+                setAgents([user]);
             }
-            await fetchAgents();
-
         } catch (err) {
-             const message = getErrorMessage(err);
-             console.error("Error seeding database:", message, err);
-            setError(`Falha ao popular o banco de dados: ${message}. Verifique as permissões de INSERT na sua tabela 'membros_pastoral'.`);
+            const message = getErrorMessage(err);
+            console.error("Error fetching data for user:", message, err);
+            setError(`Falha ao carregar dados: ${message}`);
+        } finally {
+            setLoading(false);
+        }
+    }
+    
+    useEffect(() => {
+        if (loggedInAgent) {
+            fetchDataForUser(loggedInAgent);
+            setCurrentView('LIST');
+        } else {
+            setAgents([]);
+            setLoginError(null);
+        }
+    }, [loggedInAgent]);
+    
+    const handleLogin = async (fullName: string, birthDate: string) => {
+        setLoading(true);
+        setLoginError(null);
+        try {
+            const { data, error: supabaseError } = await supabase
+                .from('membros_pastoral')
+                .select('*')
+                .eq('fullName', fullName)
+                .eq('birthDate', birthDate)
+                .single();
+            if (supabaseError || !data) {
+                throw new Error("Agente não encontrado ou dados incorretos.");
+            }
+            setLoggedInAgent(data);
+        } catch (err) {
+            const message = getErrorMessage(err);
+            console.error("Login failed:", message);
+            setLoginError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSaveAgent = async (agentData: Member) => {
-        const dataToUpsert = { ...agentData };
+    const handleLogout = () => {
+        setLoggedInAgent(null);
+    };
+    
+    const handleRegister = async (agentData: Member) => {
+        const { id, ...restOfAgentData } = agentData;
 
+        const dataToInsert = {
+            ...restOfAgentData,
+            role: Role.AGENTE,
+            weddingDate: restOfAgentData.weddingDate || null,
+            spouseName: restOfAgentData.spouseName || null,
+            vehicleModel: restOfAgentData.vehicleModel || null,
+            photo: restOfAgentData.photo || null,
+            notes: restOfAgentData.notes || null,
+        };
+        
+        setLoading(true);
+        setError(null);
+        try {
+            const { error: supabaseError } = await supabase.from('membros_pastoral').insert(dataToInsert);
+            if (supabaseError) throw supabaseError;
+            await handleLogin(agentData.fullName, agentData.birthDate);
+        } catch (err) {
+            const message = getErrorMessage(err);
+            console.error("Error registering agent:", message, err);
+            setError(`Falha ao cadastrar: ${message}. Verifique se o e-mail já não está em uso.`);
+            setTimeout(() => setError(null), 5000);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const handleSaveAgent = async (agentData: Member) => {
+        if (!loggedInAgent) return;
+        if (loggedInAgent.role === Role.AGENTE && agentData.id !== loggedInAgent.id) {
+            setError("Você não tem permissão para editar outros agentes.");
+            return;
+        }
+
+        const dataToUpsert = {
+            ...agentData,
+            weddingDate: agentData.weddingDate || null,
+            spouseName: agentData.spouseName || null,
+            vehicleModel: agentData.vehicleModel || null,
+            photo: agentData.photo || null,
+            notes: agentData.notes || null,
+        };
         if (!dataToUpsert.id) {
-            delete (dataToUpsert as Partial<Member>).id;
+          delete (dataToUpsert as Partial<typeof dataToUpsert>).id;
         }
 
         try {
-            const { error: supabaseError } = await supabase
-                .from('membros_pastoral')
-                .upsert(dataToUpsert);
+            const { error: supabaseError } = await supabase.from('membros_pastoral').upsert(dataToUpsert);
+            if (supabaseError) throw supabaseError;
             
-            if (supabaseError) {
-                throw supabaseError;
+            if (loggedInAgent.id === agentData.id) {
+                setLoggedInAgent(agentData);
+            } else {
+                await fetchDataForUser(loggedInAgent);
             }
-
-            await fetchAgents();
 
         } catch (err) {
             const message = getErrorMessage(err);
@@ -138,17 +189,14 @@ function App() {
     };
 
     const handleDeleteAgent = async (id: number) => {
+        if (loggedInAgent?.role !== Role.COORDENADOR) {
+            setError("Você não tem permissão para excluir agentes.");
+            return;
+        }
         if (window.confirm('Tem certeza que deseja excluir este agente?')) {
             try {
-                const { error: supabaseError } = await supabase
-                    .from('membros_pastoral')
-                    .delete()
-                    .eq('id', id);
-
-                if (supabaseError) {
-                    throw supabaseError;
-                }
-
+                const { error: supabaseError } = await supabase.from('membros_pastoral').delete().eq('id', id);
+                if (supabaseError) throw supabaseError;
                 setAgents(prevAgents => prevAgents.filter(m => m.id !== id));
             } catch (err) {
                 const message = getErrorMessage(err);
@@ -179,13 +227,13 @@ function App() {
     const handleConfigSave = (url: string, key: string) => {
         localStorage.setItem('supabaseUrl', url);
         localStorage.setItem('supabaseKey', key);
-        window.location.reload(); // Recarrega a página para usar as novas credenciais
+        window.location.reload();
     };
     
     const renderContent = () => {
-        if (loading) {
+        if (loading && !loggedInAgent) {
             return (
-                <div className="flex justify-center items-center py-20">
+                <div className="flex justify-center items-center h-screen">
                     <p className="text-slate-500 text-lg animate-pulse">Conectando ao banco de dados...</p>
                 </div>
             );
@@ -194,50 +242,31 @@ function App() {
         if (showConfigPanel) {
             return <ConfigPanel errorMessage={error} onSave={handleConfigSave} />;
         }
-
-        if (error) {
-             return (
-                <div className="flex flex-col justify-center items-center py-20 bg-red-50 p-6 rounded-lg border border-red-200">
-                    <p className="text-red-700 text-xl font-bold">Ocorreu um Erro</p>
-                    <p className="text-red-600 mt-2 text-center">{error}</p>
-                    <button onClick={fetchAgents} className="mt-6 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Tentar Novamente
-                    </button>
-                </div>
-            );
+        
+        if (!loggedInAgent) {
+            return <Login onLogin={handleLogin} onRegister={handleRegister} loginError={loginError} generalError={error} />;
         }
 
-        if (isDbEmpty) {
-            return (
-                <div className="flex flex-col justify-center items-center py-20 bg-white p-8 rounded-lg shadow-sm text-center">
-                    <h2 className="text-2xl font-bold text-slate-700">Bem-vindo!</h2>
-                    <p className="text-slate-500 mt-2">Seu banco de dados de agentes está vazio.</p>
-                    <p className="text-slate-500 mt-1">Deseja adicionar alguns dados de exemplo para começar?</p>
-                    <button onClick={seedDatabase} className="mt-6 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-semibold">
-                        Povoar com Dados Iniciais
-                    </button>
-                </div>
-            );
+        if (loggedInAgent.role === Role.COORDENADOR) {
+            switch (currentView) {
+                case 'LIST': return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
+                case 'FORM': return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
+                case 'REPORTS': return <Reports agents={agents} />;
+                case 'ABOUT': return <About />;
+                default: return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
+            }
         }
 
-        switch (currentView) {
-            case 'LIST':
-                return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
-            case 'FORM':
-                return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
-            case 'REPORTS':
-                return <Reports agents={agents} />;
-            case 'ABOUT':
-                return <About />;
-            default:
-                return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
+        if (loggedInAgent.role === Role.AGENTE) {
+             if (currentView === 'ABOUT') return <About />;
+            return <MemberForm agentToEdit={loggedInAgent} onSave={handleSaveAgent} isSelfEditing={true} />;
         }
     };
 
     return (
         <div className="bg-slate-100 min-h-screen font-sans">
-            <Header setCurrentView={setCurrentView} />
-            <main className="container mx-auto p-4 sm:p-6 md:p-8">
+            {loggedInAgent && <Header setCurrentView={setCurrentView} loggedInAgent={loggedInAgent} onLogout={handleLogout} />}
+            <main className={loggedInAgent ? "container mx-auto p-4 sm:p-6 md:p-8" : ""}>
                 {renderContent()}
             </main>
         </div>
