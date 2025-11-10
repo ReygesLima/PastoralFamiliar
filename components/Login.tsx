@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MemberForm from './MemberForm';
 import { Member } from '../types';
@@ -11,7 +12,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalError }) => {
-    const [isRegistering, setIsRegistering] = useState(true);
+    const [isRegistering, setIsRegistering] = useState(false);
     const [login, setLogin] = useState('');
     const [birthDate, setBirthDate] = useState('');
 

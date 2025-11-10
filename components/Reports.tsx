@@ -123,13 +123,14 @@ const Reports: React.FC<ReportsProps> = ({ agents }) => {
                                 fill="#8884d8"
                                 dataKey="value"
                                 nameKey="name"
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                // FIX: Added nullish coalescing operator to prevent error if `percent` is not a number.
+                                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                             >
                                 {dataByMaritalStatus.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value) => `${value} (${(value / totalAgents * 100).toFixed(0)}%)`} />
+                            <Tooltip formatter={(value) => `${value} (${(Number(value) / totalAgents * 100).toFixed(0)}%)`} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>

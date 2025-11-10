@@ -1,274 +1,252 @@
+
 import React, { useState, useEffect } from 'react';
 import { Member, MaritalStatus, Sector, Role } from '../types';
 import { UserIcon, InfoIcon } from './icons';
 
 interface MemberFormProps {
     agentToEdit: Member | null;
-    onSave: (member: Member) => void;
+    onSave: (agent: Member) => void;
     onCancel?: () => void;
-    isFirstTimeRegister?: boolean;
     isSelfEditing?: boolean;
+    isFirstTimeRegister?: boolean;
 }
 
-const FormField: React.FC<{ name: keyof Member, label: string | React.ReactNode, error?: string, children: React.ReactNode}> = ({ name, label, error, children }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
-        {children}
-        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-    </div>
-);
+const emptyAgent: Omit<Member, 'id' | 'role'> & { id?: number, role?: Role } = {
+    login: '',
+    photo: '',
+    fullName: '',
+    birthDate: '',
+    maritalStatus: MaritalStatus.SOLTEIRO,
+    spouseName: '',
+    weddingDate: '',
+    phone: '',
+    email: '',
+    cep: '',
+    street: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    hasVehicle: false,
+    vehicleModel: '',
+    parish: '',
+    community: '',
+    sector: Sector.PRE_MATRIMONIAL,
+    joinDate: new Date().toISOString().split('T')[0],
+    notes: '',
+};
 
-const SectionTitle: React.FC<{title: string}> = ({title}) => (
-    <h3 className="text-sm font-semibold text-white bg-blue-600 p-2 rounded-md col-span-1 md:col-span-2">{title}</h3>
-);
 
-const Tooltip: React.FC<{ text: string, children: React.ReactNode }> = ({ text, children }) => (
-    <div className="relative flex items-center group">
-        {children}
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-sm text-white bg-slate-700 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-            {text}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-700"></div>
-        </div>
-    </div>
-);
-
-
-const MemberForm: React.FC<MemberFormProps> = ({ agentToEdit, onSave, onCancel, isFirstTimeRegister = false, isSelfEditing = false }) => {
-    const initialState: Omit<Member, 'id'> = {
-        login: '',
-        fullName: '',
-        photo: '',
-        birthDate: '',
-        maritalStatus: MaritalStatus.SOLTEIRO,
-        spouseName: '',
-        weddingDate: '',
-        phone: '',
-        email: '',
-        cep: '',
-        street: '',
-        neighborhood: '',
-        city: '',
-        state: '',
-        hasVehicle: false,
-        vehicleModel: '',
-        parish: '',
-        community: '',
-        sector: Sector.PRE_MATRIMONIAL,
-        role: Role.AGENTE,
-        joinDate: '',
-        notes: '',
-    };
-
-    const [formState, setFormState] = useState<Partial<Member>>(initialState);
-    const [errors, setErrors] = useState<Partial<Record<keyof Member, string>>>({});
-
+const MemberForm: React.FC<MemberFormProps> = ({
+    agentToEdit,
+    onSave,
+    onCancel,
+    isSelfEditing = false,
+    isFirstTimeRegister = false,
+}) => {
+    const [agent, setAgent] = useState<Partial<Member>>(emptyAgent);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
     useEffect(() => {
         if (agentToEdit) {
-            setFormState(agentToEdit);
+            setAgent(agentToEdit);
+            if (agentToEdit.photo) setPhotoPreview(agentToEdit.photo);
+            else setPhotoPreview(null);
         } else {
-            setFormState(initialState);
+            setAgent(emptyAgent);
+            setPhotoPreview(null);
         }
-        setErrors({});
     }, [agentToEdit]);
 
-    const generateLogin = (name: string) => {
-        if (!name) return '';
-        const parts = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(' ');
-        if (parts.length > 1) {
-            return `${parts[0]}.${parts[parts.length - 1]}`;
-        }
-        return parts[0];
-    };
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        if (errors[name as keyof Member]) {
-            setErrors(prevErrors => {
-                const newErrors = { ...prevErrors };
-                delete newErrors[name as keyof Member];
-                return newErrors;
-            });
-        }
-        
-        if (name === 'fullName' && (!formState.login || isFirstTimeRegister)) {
-            setFormState(prev => ({ ...prev, fullName: value, login: generateLogin(value) }));
-        } else if (name === 'hasVehicle') {
-            const hasVehicleValue = value === 'true';
-            setFormState(prev => {
-                const newState = { ...prev, hasVehicle: hasVehicleValue };
-                if (!hasVehicleValue) newState.vehicleModel = '';
-                return newState;
-            });
-        } else if (name === 'maritalStatus') {
-            setFormState(prev => {
-                const newState = { ...prev, maritalStatus: value as MaritalStatus };
-                if (value !== MaritalStatus.CASADO) {
-                    newState.spouseName = '';
-                    newState.weddingDate = '';
-                }
-                return newState;
-            });
-        } else if (name === 'phone') {
-            const maskedValue = value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15);
-            setFormState(prev => ({ ...prev, [name]: maskedValue }));
+        const { name, value, type } = e.target;
+        if (type === 'checkbox') {
+            const { checked } = e.target as HTMLInputElement;
+            setAgent(prev => ({ ...prev, [name]: checked }));
         } else {
-            setFormState(prev => ({ ...prev, [name]: value }));
+            setAgent(prev => ({ ...prev, [name]: value }));
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onloadend = () => setFormState(prev => ({ ...prev, photo: reader.result as string }));
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                setAgent(prev => ({ ...prev, photo: base64String }));
+                setPhotoPreview(base64String);
+            };
             reader.readAsDataURL(file);
         }
     };
-    
-    const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-        const cep = e.target.value.replace(/\D/g, '');
-        if (cep.length !== 8) return;
-
-        try {
-            setErrors(prev => ({ ...prev, cep: undefined }));
-            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await response.json();
-            if (!data.erro) {
-                setFormState(prev => ({ ...prev, street: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf, }));
-            } else {
-                setErrors(prev => ({ ...prev, cep: 'CEP não encontrado.'}));
-                setFormState(prev => ({ ...prev, street: '', neighborhood: '', city: '', state: ''}));
-            }
-        } catch (error) {
-            console.error('Erro ao buscar CEP:', error);
-            setErrors(prev => ({ ...prev, cep: 'Erro ao buscar CEP.'}));
-        }
-    };
-
-
-    const validate = () => {
-        const newErrors: Partial<Record<keyof Member, string>> = {};
-        const requiredFields: (keyof Member)[] = ['login', 'fullName', 'birthDate', 'maritalStatus', 'phone', 'email', 'cep', 'street', 'neighborhood', 'city', 'state', 'parish', 'community', 'sector', 'role', 'joinDate'];
-        
-        requiredFields.forEach(field => {
-            if (!formState[field]) newErrors[field] = 'Este campo é obrigatório.';
-        });
-
-        if (formState.maritalStatus === MaritalStatus.CASADO) {
-            if(!formState.spouseName) newErrors.spouseName = 'Nome do cônjuge é obrigatório para casados.';
-            if(!formState.weddingDate) newErrors.weddingDate = 'Data de casamento é obrigatória para casados.';
-        }
-        
-        if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) newErrors.email = 'E-mail inválido.';
-        if (formState.hasVehicle && !formState.vehicleModel) newErrors.vehicleModel = 'Modelo do veículo é obrigatório se possui veículo.';
-        if (formState.login && !/^[a-z0-9_.]+$/.test(formState.login)) newErrors.login = 'Login deve conter apenas letras minúsculas, números, pontos e underlines.';
-
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (validate()) onSave(formState as Member);
+        onSave(agent as Member);
     };
     
+    const formTitle = isFirstTimeRegister ? "Fazer meu primeiro cadastro" : (agentToEdit ? "Editar Cadastro de Agente" : "Cadastrar Novo Agente");
+    const saveButtonText = isFirstTimeRegister ? "Cadastrar" : "Salvar Alterações";
+
+    const FormSection: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
+        <div className="mt-8">
+            <h3 className="bg-blue-600 text-white font-bold italic text-[15px] py-2 px-4 rounded-md mb-4">{title}</h3>
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                {children}
+            </div>
+        </div>
+    );
+    
+    const InputField: React.FC<{ name: string, label: string, type?: string, required?: boolean, colSpan?: string, children?: React.ReactNode, tooltip?: string }> = ({ name, label, type = 'text', required = false, colSpan = 'sm:col-span-3', children, tooltip }) => (
+        <div className={colSpan}>
+            <div className="flex items-center">
+                <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
+                {tooltip && (
+                    <div className="relative flex items-center group ml-1.5">
+                        <InfoIcon className="h-4 w-4 text-slate-400 cursor-help" />
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 text-xs text-white bg-slate-700 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
+                            {tooltip}
+                        </div>
+                    </div>
+                )}
+            </div>
+            <div className="mt-1">
+                {children ? children : (
+                    <input
+                        type={type}
+                        name={name}
+                        id={name}
+                        value={(agent as any)[name] || ''}
+                        onChange={handleChange}
+                        required={required}
+                        className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    />
+                )}
+            </div>
+        </div>
+    );
+
     return (
-        <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">{isFirstTimeRegister ? 'Primeiro Acesso - Novo Agente' : (isSelfEditing ? 'Meu Cadastro' : (agentToEdit ? 'Editar Agente' : 'Cadastrar Novo Agente'))}</h2>
-            {isSelfEditing && <p className="text-sm text-slate-600 mb-6 -mt-4">Mantenha seus dados sempre atualizados. Para alterar nome, login, data de nascimento ou função, entre em contato com a coordenação.</p>}
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <FormField name="fullName" label="Nome Completo*" error={errors.fullName}>
-                        <input id="fullName" type="text" name="fullName" value={formState.fullName || ''} onChange={handleChange} disabled={isSelfEditing} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"/>
-                    </FormField>
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">{formTitle}</h2>
+            <form onSubmit={handleSubmit}>
+                <div className="space-y-6">
 
-                     <div className="flex items-center space-x-4 mt-1">
-                        {formState.photo ?
-                           <img className="h-20 w-20 object-cover rounded-full" src={formState.photo} alt="Foto do agente"/> :
-                           <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400"><UserIcon className="w-10 h-10" /></div>
-                        }
-                        <FormField name="photo" label="Foto do Agente" error={errors.photo}>
-                           <input id="photo" type="file" name="photo" onChange={handleFileChange} accept="image/*" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                        </FormField>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
-                    <SectionTitle title="Acesso e Informações Pessoais" />
-                    <FormField name="login" label="Login de Acesso*" error={errors.login}>
-                        <input id="login" type="text" name="login" value={formState.login || ''} onChange={handleChange} disabled={isSelfEditing} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"/>
-                    </FormField>
-                    <FormField name="birthDate" label="Data de Nascimento*" error={errors.birthDate}>
-                         <input id="birthDate" type="date" name="birthDate" value={formState.birthDate || ''} onChange={handleChange} disabled={isSelfEditing} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"/>
-                    </FormField>
-                    <FormField name="maritalStatus" label="Estado Civil*" error={errors.maritalStatus}>
-                        <select id="maritalStatus" name="maritalStatus" value={formState.maritalStatus} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
-                            {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
-                        </select>
-                    </FormField>
-                    {formState.maritalStatus === MaritalStatus.CASADO && (
-                        <>
-                            <FormField name="spouseName" label="Nome do Cônjuge*" error={errors.spouseName}>
-                                <input id="spouseName" type="text" name="spouseName" value={formState.spouseName || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                            </FormField>
-                             <FormField name="weddingDate" label="Data de Casamento*" error={errors.weddingDate}>
-                                 <input id="weddingDate" type="date" name="weddingDate" value={formState.weddingDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                            </FormField>
-                        </>
-                    )}
-                     <FormField name="phone" label="Telefone / WhatsApp*" error={errors.phone}>
-                        <input id="phone" type="tel" name="phone" placeholder="(XX) XXXXX-XXXX" value={formState.phone || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                    </FormField>
-                    <FormField name="email" label="E-mail*" error={errors.email}>
-                        <input id="email" type="email" name="email" placeholder="exemplo@email.com" value={formState.email || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-                    </FormField>
-
-                    <div className="md:col-span-2">
-                        <div className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">Possui Veículo?*
-                             <Tooltip text="Esta informação é necessária caso precisemos do seu veículo para pegar idosos na missa da Saúde."><InfoIcon className="h-5 w-5 text-slate-400" /></Tooltip>
+                     {/* FOTO */}
+                     <div className="flex flex-col items-center space-y-4">
+                        <div className="w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                            {photoPreview ? (
+                                <img src={photoPreview} alt="Foto do Agente" className="w-full h-full object-cover" />
+                            ) : (
+                                <UserIcon className="w-16 h-16 text-slate-400" />
+                            )}
                         </div>
-                        <div className="flex items-center space-x-6">
-                             <label className="flex items-center"><input type="radio" name="hasVehicle" value="true" checked={formState.hasVehicle === true} onChange={handleChange} className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500" /><span className="ml-2 text-sm text-slate-700">Sim</span></label>
-                            <label className="flex items-center"><input type="radio" name="hasVehicle" value="false" checked={formState.hasVehicle === false} onChange={handleChange} className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500" /><span className="ml-2 text-sm text-slate-700">Não</span></label>
-                        </div>
+                        <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                        <label htmlFor="photo-upload" className="cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                            {photoPreview ? 'Alterar Foto' : 'Enviar Foto'}
+                        </label>
                     </div>
 
-                    {formState.hasVehicle && (
-                        <div className="md:col-span-2"><FormField name="vehicleModel" label="Modelo do Veículo*" error={errors.vehicleModel}><input id="vehicleModel" type="text" name="vehicleModel" value={formState.vehicleModel || ''} onChange={handleChange} placeholder="Ex: Fiat Uno" className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField></div>
-                    )}
+                    <FormSection title="Dados Pessoais">
+                        <InputField name="fullName" label="Nome Completo (Casal)" required colSpan="sm:col-span-6" />
+                        <InputField 
+                            name="login" 
+                            label="Login (ex: jose.silva)" 
+                            required 
+                            colSpan="sm:col-span-3" 
+                            tooltip="Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
+                        />
+                        <InputField 
+                            name="birthDate" 
+                            label="Data de Nascimento (Titular)" 
+                            type="date" 
+                            required 
+                            colSpan="sm:col-span-3"
+                            tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
+                        />
+                        <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-3">
+                             <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
+                            </select>
+                        </InputField>
+                        {agent.maritalStatus === MaritalStatus.CASADO && (
+                            <>
+                                <InputField name="spouseName" label="Nome do Cônjuge" colSpan="sm:col-span-3" />
+                                <InputField name="weddingDate" label="Data de Casamento" type="date" colSpan="sm:col-span-3" />
+                            </>
+                        )}
+                    </FormSection>
 
-                    <SectionTitle title="Endereço" />
-                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <FormField name="cep" label="CEP*" error={errors.cep}><input id="cep" type="text" name="cep" placeholder="Apenas números" value={formState.cep || ''} onChange={handleChange} onBlur={handleCepBlur} maxLength={9} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                        <FormField name="neighborhood" label="Bairro*" error={errors.neighborhood}><input id="neighborhood" type="text" name="neighborhood" value={formState.neighborhood || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                         <div className="sm:col-span-2"><FormField name="street" label="Rua e Número*" error={errors.street}><input id="street" type="text" name="street" value={formState.street || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField></div>
-                        <FormField name="city" label="Cidade*" error={errors.city}><input id="city" type="text" name="city" value={formState.city || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                        <FormField name="state" label="UF*" error={errors.state}><input id="state" type="text" name="state" value={formState.state || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                     </div>
-                   
-                    <SectionTitle title="Informações Pastorais" />
-                     <FormField name="parish" label="Paróquia que participa*" error={errors.parish}><input id="parish" type="text" name="parish" value={formState.parish || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                     <FormField name="community" label="Comunidade*" error={errors.community}><input id="community" type="text" name="community" value={formState.community || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
-                    <FormField name="sector" label="Setor Pastoral*" error={errors.sector}><select id="sector" name="sector" value={formState.sector} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">{Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                     <FormField name="role" label="Função na Pastoral*" error={errors.role}><select id="role" name="role" value={formState.role} onChange={handleChange} disabled={isSelfEditing || isFirstTimeRegister} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white disabled:bg-slate-100">{Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}</select></FormField>
-                     <FormField name="joinDate" label="Data de Ingresso na Pastoral*" error={errors.joinDate}><input id="joinDate" type="date" name="joinDate" value={formState.joinDate || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/></FormField>
+                    <FormSection title="Contato e Endereço">
+                        <InputField name="phone" label="Telefone / WhatsApp" required colSpan="sm:col-span-3" />
+                        <InputField name="email" label="E-mail" type="email" required colSpan="sm:col-span-3" />
+                        <InputField 
+                            name="cep" 
+                            label="CEP" 
+                            colSpan="sm:col-span-2"
+                            tooltip="Formato esperado: 00000-000."
+                        />
+                        <InputField name="street" label="Endereço (Rua, Av.)" colSpan="sm:col-span-4" />
+                        <InputField name="neighborhood" label="Bairro" colSpan="sm:col-span-2" />
+                        <InputField name="city" label="Cidade" colSpan="sm:col-span-2" />
+                        <InputField name="state" label="Estado (UF)" colSpan="sm:col-span-2" />
+                    </FormSection>
+
+                    <FormSection title="Informações Pastorais">
+                        <InputField name="parish" label="Paróquia" colSpan="sm:col-span-3" />
+                        <InputField name="community" label="Comunidade" colSpan="sm:col-span-3" />
+                        <InputField name="sector" label="Setor Pastoral" required colSpan="sm:col-span-3">
+                            <select id="sector" name="sector" value={agent.sector} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                {Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </InputField>
+                        {!isSelfEditing && !isFirstTimeRegister && (
+                             <InputField name="role" label="Função" required colSpan="sm:col-span-3">
+                                 <select id="role" name="role" value={agent.role} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </InputField>
+                        )}
+                        <InputField name="joinDate" label="Data de Ingresso" type="date" required colSpan="sm:col-span-3" />
+                    </FormSection>
                     
-                    <div className="md:col-span-2"><FormField name="notes" label="Observações Adicionais" error={errors.notes}><textarea id="notes" name="notes" value={formState.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea></FormField></div>
+                     <FormSection title="Outras Informações">
+                        <div className="sm:col-span-6">
+                            <div className="relative flex items-start">
+                                <div className="flex h-6 items-center">
+                                    <input id="hasVehicle" name="hasVehicle" type="checkbox" checked={agent.hasVehicle || false} onChange={handleChange} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
+                                </div>
+                                <div className="ml-3 text-sm leading-6">
+                                    <label htmlFor="hasVehicle" className="font-medium text-slate-900">Possui veículo disponível para a Pastoral</label>
+                                </div>
+                            </div>
+                        </div>
+                        {agent.hasVehicle && (
+                            <InputField name="vehicleModel" label="Modelo do Veículo" colSpan="sm:col-span-3" />
+                        )}
+                        <div className="sm:col-span-6">
+                             <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Observações</label>
+                             <div className="mt-1">
+                                <textarea
+                                    id="notes" name="notes" rows={3} value={agent.notes || ''} onChange={handleChange}
+                                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </FormSection>
                 </div>
 
-                <div className="flex justify-end space-x-4 pt-4">
-                    {!isFirstTimeRegister && !isSelfEditing && onCancel && (
-                        <button type="button" onClick={onCancel} className="px-6 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500">
-                            Cancelar
+                <div className="pt-5 mt-6 border-t border-slate-200">
+                    <div className="flex justify-end gap-x-3">
+                        {!isSelfEditing && !isFirstTimeRegister && onCancel && (
+                            <button type="button" onClick={onCancel} className="rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                                Cancelar
+                            </button>
+                        )}
+                        <button type="submit" className="inline-flex justify-center rounded-md bg-blue-600 py-2 px-6 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                           {saveButtonText}
                         </button>
-                    )}
-                    <button type="submit" className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        {isFirstTimeRegister ? 'Cadastrar e Acessar' : 'Salvar Alterações'}
-                    </button>
+                    </div>
                 </div>
             </form>
         </div>
