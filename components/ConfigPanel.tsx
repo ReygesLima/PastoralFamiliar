@@ -68,7 +68,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave }) => {
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://exemplo.supabase.co"
                             required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                         />
                     </div>
                     <div>
@@ -83,7 +83,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave }) => {
                                 onChange={(e) => setKey(e.target.value)}
                                 placeholder="eyJhbGciOiJI..."
                                 required
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10 text-sm"
                             />
                             <button
                                 type="button"

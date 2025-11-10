@@ -8,13 +8,26 @@ interface HeaderProps {
     onLogout: () => void;
 }
 
+interface NavLinkProps {
+    label: string;
+    icon: string;
+    onClick: () => void;
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ label, icon, onClick }) => (
+    <button
+        onClick={onClick}
+        className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-md transition-colors duration-200 w-full md:w-auto text-left"
+    >
+        <i className={`fas ${icon} text-amber-500`}></i>
+        <span>{label}</span>
+    </button>
+);
+
 const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isCoordinator = loggedInAgent.role === Role.COORDENADOR;
 
-    // FIX: Refactored navItems creation to use intermediate typed arrays.
-    // This provides a clear contextual type for the objects within, preventing TypeScript
-    // from widening the 'view' property to a generic 'string' inside the conditional logic.
     const coordinatorNavItems: { view: View; label: string; icon: string; }[] = [
         { view: 'LIST', label: 'Listar Agentes', icon: 'fa-users' },
         { view: 'REPORTS', label: 'Relatórios', icon: 'fa-chart-pie' },
@@ -27,30 +40,16 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout
         ...(!isCoordinator ? agentNavItems : []),
         { view: 'ABOUT', label: 'Sobre', icon: 'fa-info-circle' },
     ];
+    
+    const handleNavClick = (view?: View, customOnClick?: () => void) => {
+        if (customOnClick) {
+            customOnClick();
+        } else if (view) {
+            setCurrentView(view);
+        }
+        setIsMenuOpen(false);
+    };
 
-    interface NavLinkProps {
-        // FIX: The view prop is made optional for NavLinks that are just buttons with onClick handlers.
-        view?: View;
-        label: string;
-        icon: string;
-        isButton?: boolean;
-        onClick?: () => void;
-    }
-
-    const NavLink: React.FC<NavLinkProps> = ({ view, label, icon, isButton = false, onClick }) => (
-        <button
-            onClick={() => {
-                if (onClick) onClick();
-                // FIX: Check if view exists before setting it, as it's now optional.
-                else if (view) setCurrentView(view);
-                setIsMenuOpen(false);
-            }}
-            className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-md transition-colors duration-200 w-full md:w-auto text-left"
-        >
-            <i className={`fas ${icon} text-amber-500`}></i>
-            <span>{label}</span>
-        </button>
-    );
 
     return (
         <header className="bg-white shadow-md">
@@ -66,9 +65,8 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout
 
                     <nav className="hidden md:flex items-center space-x-2">
                         <span className="text-slate-600 text-sm mr-4">Olá, {loggedInAgent.fullName.split(' ')[0]}!</span>
-                        {navItems.map(item => <NavLink key={item.view} view={item.view} label={item.label} icon={item.icon} />)}
-                         {/* FIX: Removed the 'view' prop from the logout button as it's not needed and was causing a type error. */}
-                         <NavLink label="Sair" icon="fa-sign-out-alt" isButton onClick={onLogout} />
+                        {navItems.map(item => <NavLink key={item.view} onClick={() => handleNavClick(item.view)} label={item.label} icon={item.icon} />)}
+                         <NavLink label="Sair" icon="fa-sign-out-alt" onClick={() => handleNavClick(undefined, onLogout)} />
                     </nav>
 
                     <div className="md:hidden">
@@ -83,10 +81,9 @@ const Header: React.FC<HeaderProps> = ({ setCurrentView, loggedInAgent, onLogout
                 <div className="md:hidden bg-white border-t border-slate-200">
                     <nav className="flex flex-col p-4 space-y-2">
                         <span className="px-3 py-2 text-slate-800 font-semibold">Olá, {loggedInAgent.fullName.split(' ')[0]}!</span>
-                        {navItems.map(item => <NavLink key={item.view} view={item.view} label={item.label} icon={item.icon} />)}
+                        {navItems.map(item => <NavLink key={item.view} onClick={() => handleNavClick(item.view)} label={item.label} icon={item.icon} />)}
                          <div className="border-t my-2"></div>
-                         {/* FIX: Removed the 'view' prop from the logout button as it's not needed and was causing a type error. */}
-                         <NavLink label="Sair" icon="fa-sign-out-alt" isButton onClick={onLogout} />
+                         <NavLink label="Sair" icon="fa-sign-out-alt" onClick={() => handleNavClick(undefined, onLogout)} />
                     </nav>
                 </div>
             )}

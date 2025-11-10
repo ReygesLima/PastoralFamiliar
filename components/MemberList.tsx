@@ -40,10 +40,10 @@ const MemberCard: React.FC<{ agent: Member; onEdit: (id: number) => void; onDele
             </div>
             <div className="bg-slate-50 px-5 py-3 flex justify-end space-x-2">
                 <button onClick={() => onEdit(agent.id)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors duration-200" aria-label={`Editar ${agent.fullName}`}>
-                    <EditIcon className="h-5 w-5" />
+                    <EditIcon className="h-6 w-6" />
                 </button>
                 <button onClick={() => onDelete(agent.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors duration-200" aria-label={`Excluir ${agent.fullName}`}>
-                    <DeleteIcon className="h-5 w-5" />
+                    <DeleteIcon className="h-6 w-6" />
                 </button>
             </div>
         </div>
@@ -136,7 +136,7 @@ const MemberList: React.FC<MemberListProps> = ({ agents, onEdit, onDelete, onAdd
             const FONT_SIZE_NORMAL = 10;
             const FONT_SIZE_TITLE = 16;
             const FONT_SIZE_HEADER = 12;
-            const LINE_HEIGHT = 7;
+            const LINE_HEIGHT = 12;
     
             for (let i = 0; i < filteredAgents.length; i++) {
                 const agent = filteredAgents[i];
@@ -264,26 +264,26 @@ const MemberList: React.FC<MemberListProps> = ({ agents, onEdit, onDelete, onAdd
                             placeholder="Digite aqui..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                         />
                     </div>
                      <div>
                         <label htmlFor="filterSector" className="block text-sm font-medium text-slate-700 mb-1">Setor Pastoral</label>
-                        <select id="filterSector" value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <select id="filterSector" value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-sm">
                             <option value="">Todos</option>
                             {sectors.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
                      <div>
                         <label htmlFor="filterMaritalStatus" className="block text-sm font-medium text-slate-700 mb-1">Estado Civil</label>
-                        <select id="filterMaritalStatus" value={filterMaritalStatus} onChange={(e) => setFilterMaritalStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <select id="filterMaritalStatus" value={filterMaritalStatus} onChange={(e) => setFilterMaritalStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-sm">
                             <option value="">Todos</option>
                             {Object.values(MaritalStatus).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
                     <div>
                         <label htmlFor="filterRole" className="block text-sm font-medium text-slate-700 mb-1">Função</label>
-                        <select id="filterRole" value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <select id="filterRole" value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-sm">
                             <option value="">Todas</option>
                             {roles.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>

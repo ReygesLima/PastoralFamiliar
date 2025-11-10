@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Member, MaritalStatus, Sector, Role } from '../types';
 import { UserIcon, InfoIcon } from './icons';
@@ -34,6 +33,56 @@ const emptyAgent: Omit<Member, 'id' | 'role'> & { id?: number, role?: Role } = {
     joinDate: new Date().toISOString().split('T')[0],
     notes: '',
 };
+
+const FormSection: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
+    <div className="mt-8">
+        <h3 className="bg-blue-600 text-white font-bold italic text-[15px] py-2 px-4 rounded-md mb-4">{title}</h3>
+        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            {children}
+        </div>
+    </div>
+);
+
+interface InputFieldProps {
+    name: string;
+    label: string;
+    value?: string | number;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+    type?: string;
+    required?: boolean;
+    colSpan?: string;
+    children?: React.ReactNode;
+    tooltip?: string;
+}
+
+const InputField: React.FC<InputFieldProps> = ({ name, label, value, onChange, type = 'text', required = false, colSpan = 'sm:col-span-3', children, tooltip }) => (
+    <div className={colSpan}>
+        <div className="flex items-center">
+            <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
+            {tooltip && (
+                <div className="relative flex items-center group ml-1.5">
+                    <InfoIcon className="h-4 w-4 text-slate-400 cursor-help" />
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 text-xs text-white bg-slate-700 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
+                        {tooltip}
+                    </div>
+                </div>
+            )}
+        </div>
+        <div className="mt-1">
+            {children ? children : (
+                <input
+                    type={type}
+                    name={name}
+                    id={name}
+                    value={value || ''}
+                    onChange={onChange}
+                    required={required}
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                />
+            )}
+        </div>
+    </div>
+);
 
 
 const MemberForm: React.FC<MemberFormProps> = ({
@@ -88,44 +137,6 @@ const MemberForm: React.FC<MemberFormProps> = ({
     const formTitle = isFirstTimeRegister ? "Fazer meu primeiro cadastro" : (agentToEdit ? "Editar Cadastro de Agente" : "Cadastrar Novo Agente");
     const saveButtonText = isFirstTimeRegister ? "Cadastrar" : "Salvar Alterações";
 
-    const FormSection: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-        <div className="mt-8">
-            <h3 className="bg-blue-600 text-white font-bold italic text-[15px] py-2 px-4 rounded-md mb-4">{title}</h3>
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                {children}
-            </div>
-        </div>
-    );
-    
-    const InputField: React.FC<{ name: string, label: string, type?: string, required?: boolean, colSpan?: string, children?: React.ReactNode, tooltip?: string }> = ({ name, label, type = 'text', required = false, colSpan = 'sm:col-span-3', children, tooltip }) => (
-        <div className={colSpan}>
-            <div className="flex items-center">
-                <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
-                {tooltip && (
-                    <div className="relative flex items-center group ml-1.5">
-                        <InfoIcon className="h-4 w-4 text-slate-400 cursor-help" />
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max max-w-xs p-2 text-xs text-white bg-slate-700 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
-                            {tooltip}
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div className="mt-1">
-                {children ? children : (
-                    <input
-                        type={type}
-                        name={name}
-                        id={name}
-                        value={(agent as any)[name] || ''}
-                        onChange={handleChange}
-                        required={required}
-                        className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    />
-                )}
-            </div>
-        </div>
-    );
-
     return (
         <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">{formTitle}</h2>
@@ -148,10 +159,12 @@ const MemberForm: React.FC<MemberFormProps> = ({
                     </div>
 
                     <FormSection title="Dados Pessoais">
-                        <InputField name="fullName" label="Nome Completo (Casal)" required colSpan="sm:col-span-6" />
+                        <InputField name="fullName" label="Nome Completo (Casal)" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-6" />
                         <InputField 
                             name="login" 
                             label="Login (ex: jose.silva)" 
+                            value={agent.login} 
+                            onChange={handleChange} 
                             required 
                             colSpan="sm:col-span-3" 
                             tooltip="Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
@@ -160,54 +173,58 @@ const MemberForm: React.FC<MemberFormProps> = ({
                             name="birthDate" 
                             label="Data de Nascimento (Titular)" 
                             type="date" 
+                            value={agent.birthDate} 
+                            onChange={handleChange} 
                             required 
                             colSpan="sm:col-span-3"
                             tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
                         />
                         <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-3">
-                             <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                             <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
                                 {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
                             </select>
                         </InputField>
                         {agent.maritalStatus === MaritalStatus.CASADO && (
                             <>
-                                <InputField name="spouseName" label="Nome do Cônjuge" colSpan="sm:col-span-3" />
-                                <InputField name="weddingDate" label="Data de Casamento" type="date" colSpan="sm:col-span-3" />
+                                <InputField name="spouseName" label="Nome do Cônjuge" value={agent.spouseName} onChange={handleChange} colSpan="sm:col-span-3" />
+                                <InputField name="weddingDate" label="Data de Casamento" type="date" value={agent.weddingDate} onChange={handleChange} colSpan="sm:col-span-3" />
                             </>
                         )}
                     </FormSection>
 
                     <FormSection title="Contato e Endereço">
-                        <InputField name="phone" label="Telefone / WhatsApp" required colSpan="sm:col-span-3" />
-                        <InputField name="email" label="E-mail" type="email" required colSpan="sm:col-span-3" />
+                        <InputField name="phone" label="Telefone / WhatsApp" value={agent.phone} onChange={handleChange} required colSpan="sm:col-span-3" />
+                        <InputField name="email" label="E-mail" type="email" value={agent.email} onChange={handleChange} required colSpan="sm:col-span-3" />
                         <InputField 
                             name="cep" 
                             label="CEP" 
+                            value={agent.cep} 
+                            onChange={handleChange} 
                             colSpan="sm:col-span-2"
                             tooltip="Formato esperado: 00000-000."
                         />
-                        <InputField name="street" label="Endereço (Rua, Av.)" colSpan="sm:col-span-4" />
-                        <InputField name="neighborhood" label="Bairro" colSpan="sm:col-span-2" />
-                        <InputField name="city" label="Cidade" colSpan="sm:col-span-2" />
-                        <InputField name="state" label="Estado (UF)" colSpan="sm:col-span-2" />
+                        <InputField name="street" label="Endereço (Rua, Av.)" value={agent.street} onChange={handleChange} colSpan="sm:col-span-4" />
+                        <InputField name="neighborhood" label="Bairro" value={agent.neighborhood} onChange={handleChange} colSpan="sm:col-span-2" />
+                        <InputField name="city" label="Cidade" value={agent.city} onChange={handleChange} colSpan="sm:col-span-2" />
+                        <InputField name="state" label="Estado (UF)" value={agent.state} onChange={handleChange} colSpan="sm:col-span-2" />
                     </FormSection>
 
                     <FormSection title="Informações Pastorais">
-                        <InputField name="parish" label="Paróquia" colSpan="sm:col-span-3" />
-                        <InputField name="community" label="Comunidade" colSpan="sm:col-span-3" />
+                        <InputField name="parish" label="Paróquia" value={agent.parish} onChange={handleChange} colSpan="sm:col-span-3" />
+                        <InputField name="community" label="Comunidade" value={agent.community} onChange={handleChange} colSpan="sm:col-span-3" />
                         <InputField name="sector" label="Setor Pastoral" required colSpan="sm:col-span-3">
-                            <select id="sector" name="sector" value={agent.sector} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <select id="sector" name="sector" value={agent.sector} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
                                 {Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </InputField>
                         {!isSelfEditing && !isFirstTimeRegister && (
                              <InputField name="role" label="Função" required colSpan="sm:col-span-3">
-                                 <select id="role" name="role" value={agent.role} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                 <select id="role" name="role" value={agent.role} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
                                     {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </InputField>
                         )}
-                        <InputField name="joinDate" label="Data de Ingresso" type="date" required colSpan="sm:col-span-3" />
+                        <InputField name="joinDate" label="Data de Ingresso" type="date" value={agent.joinDate} onChange={handleChange} required colSpan="sm:col-span-3" />
                     </FormSection>
                     
                      <FormSection title="Outras Informações">
@@ -222,14 +239,14 @@ const MemberForm: React.FC<MemberFormProps> = ({
                             </div>
                         </div>
                         {agent.hasVehicle && (
-                            <InputField name="vehicleModel" label="Modelo do Veículo" colSpan="sm:col-span-3" />
+                            <InputField name="vehicleModel" label="Modelo do Veículo" value={agent.vehicleModel} onChange={handleChange} colSpan="sm:col-span-3" />
                         )}
                         <div className="sm:col-span-6">
                              <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Observações</label>
                              <div className="mt-1">
                                 <textarea
                                     id="notes" name="notes" rows={3} value={agent.notes || ''} onChange={handleChange}
-                                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
                                 ></textarea>
                             </div>
                         </div>

@@ -61,14 +61,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
                                 <label htmlFor="login" className="block text-sm font-medium text-slate-700">Login</label>
                                 <input
                                     id="login" type="text" value={login} onChange={(e) => setLogin(e.target.value)} required
-                                    className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
                             </div>
                              <div>
                                 <label htmlFor="birthDate" className="block text-sm font-medium text-slate-700">Data de Nascimento</label>
                                 <input
                                     id="birthDate" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required
-                                    className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
                             </div>
                             {loginError && <p className="text-sm text-red-600 text-center">{loginError}</p>}
