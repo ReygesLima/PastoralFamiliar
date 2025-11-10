@@ -100,7 +100,7 @@ function App() {
             const { data, error: supabaseError } = await supabase
                 .from('membros_pastoral')
                 .select('*')
-                .eq('login', login.toLowerCase())
+                .ilike('login', login)
                 .eq('birthDate', birthDate)
                 .single();
             if (supabaseError || !data) {

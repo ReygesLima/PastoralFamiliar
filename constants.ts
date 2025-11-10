@@ -1,3 +1,4 @@
+
 import { Member, MaritalStatus, Sector, Role } from './types';
 
 export const INITIAL_AGENTS: Member[] = [

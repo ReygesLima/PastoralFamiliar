@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Member, MaritalStatus, Sector, Role } from '../types';
-import { UserIcon, InfoIcon } from './icons';
+import { UserIcon, InfoIcon, PrintIcon } from './icons';
 
 interface MemberFormProps {
     agentToEdit: Member | null;
@@ -48,14 +48,17 @@ interface InputFieldProps {
     label: string;
     value?: string | number;
     onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+    onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
     type?: string;
     required?: boolean;
     colSpan?: string;
     children?: React.ReactNode;
     tooltip?: string;
+    disabled?: boolean;
+    maxLength?: number;
 }
 
-const InputField: React.FC<InputFieldProps> = ({ name, label, value, onChange, type = 'text', required = false, colSpan = 'sm:col-span-3', children, tooltip }) => (
+const InputField: React.FC<InputFieldProps> = ({ name, label, value, onChange, onBlur, type = 'text', required = false, colSpan = 'sm:col-span-3', children, tooltip, disabled, maxLength }) => (
     <div className={colSpan}>
         <div className="flex items-center">
             <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
@@ -76,11 +79,134 @@ const InputField: React.FC<InputFieldProps> = ({ name, label, value, onChange, t
                     id={name}
                     value={value || ''}
                     onChange={onChange}
+                    onBlur={onBlur}
                     required={required}
-                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                    disabled={disabled}
+                    maxLength={maxLength}
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
                 />
             )}
         </div>
+    </div>
+);
+
+const PrintableFicha: React.FC<{ agent: Partial<Member> }> = ({ agent }) => (
+    <div className="printable-area">
+        <style>{`
+            .printable-area {
+                display: none;
+                font-family: Arial, sans-serif;
+                color: #333;
+            }
+            @media print {
+                body > *:not(.printable-area-wrapper) {
+                    display: none !important;
+                }
+                .printable-area-wrapper, .printable-area {
+                    display: block !important;
+                    margin: 0;
+                    padding: 0;
+                }
+                .printable-area {
+                    padding: 20mm 15mm;
+                    font-size: 10pt;
+                }
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .print-header h1 {
+                    font-size: 16pt;
+                    margin: 0;
+                }
+                .print-section-title {
+                    font-size: 12pt;
+                    font-weight: bold;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 3px;
+                    margin-top: 15px;
+                    margin-bottom: 10px;
+                }
+                .print-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 2fr;
+                    gap: 10px;
+                    align-items: flex-start;
+                }
+                .print-photo {
+                    width: 40mm;
+                    height: 40mm;
+                    border: 1px solid #ccc;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+                .print-photo img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .print-photo-placeholder {
+                    font-size: 8pt;
+                    color: #888;
+                }
+                .print-field {
+                    margin-bottom: 5px;
+                }
+                .print-field strong {
+                    display: inline-block;
+                    width: 120px;
+                }
+            }
+        `}</style>
+         <div className="print-header">
+            <h1>Ficha Cadastral de Agente</h1>
+            <p>Pastoral Familiar - Cadastro Paroquial</p>
+        </div>
+        <div className="print-grid">
+            <div className="print-photo">
+                {agent.photo ? <img src={agent.photo} alt="Foto" /> : <span className="print-photo-placeholder">Sem Foto</span>}
+            </div>
+            <div>
+                 <div className="print-field"><strong>Nome Completo:</strong> {agent.fullName}</div>
+                <div className="print-field"><strong>Data de Nasc.:</strong> {agent.birthDate ? new Date(agent.birthDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</div>
+                <div className="print-field"><strong>Estado Civil:</strong> {agent.maritalStatus}</div>
+                {agent.maritalStatus === MaritalStatus.CASADO && (
+                    <>
+                        <div className="print-field"><strong>Cônjuge:</strong> {agent.spouseName}</div>
+                        <div className="print-field"><strong>Data Casamento:</strong> {agent.weddingDate ? new Date(agent.weddingDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</div>
+                    </>
+                )}
+            </div>
+        </div>
+        
+        <div className="print-section-title">Contato</div>
+        <div className="print-field"><strong>Telefone:</strong> {agent.phone}</div>
+        <div className="print-field"><strong>E-mail:</strong> {agent.email}</div>
+
+        <div className="print-section-title">Endereço</div>
+        <div className="print-field"><strong>Endereço:</strong> {agent.street}</div>
+        <div className="print-field"><strong>Bairro:</strong> {agent.neighborhood}</div>
+        <div className="print-field"><strong>Cidade/UF:</strong> {agent.city} / {agent.state}</div>
+        <div className="print-field"><strong>CEP:</strong> {agent.cep}</div>
+
+        <div className="print-section-title">Informações Pastorais</div>
+        <div className="print-field"><strong>Paróquia:</strong> {agent.parish}</div>
+        <div className="print-field"><strong>Comunidade:</strong> {agent.community}</div>
+        <div className="print-field"><strong>Setor:</strong> {agent.sector}</div>
+        <div className="print-field"><strong>Função:</strong> {agent.role}</div>
+        <div className="print-field"><strong>Ingresso:</strong> {agent.joinDate ? new Date(agent.joinDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</div>
+
+        <div className="print-section-title">Outras Informações</div>
+        <div className="print-field"><strong>Possui Veículo:</strong> {agent.hasVehicle ? 'Sim' : 'Não'}</div>
+        {agent.hasVehicle && <div className="print-field"><strong>Modelo:</strong> {agent.vehicleModel}</div>}
+        {agent.notes && (
+            <>
+                <div className="print-field"><strong>Observações:</strong></div>
+                <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>{agent.notes}</p>
+            </>
+        )}
     </div>
 );
 
@@ -94,6 +220,8 @@ const MemberForm: React.FC<MemberFormProps> = ({
 }) => {
     const [agent, setAgent] = useState<Partial<Member>>(emptyAgent);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [isFetchingCep, setIsFetchingCep] = useState(false);
+    const [cepError, setCepError] = useState<string | null>(null);
 
     useEffect(() => {
         if (agentToEdit) {
@@ -106,13 +234,71 @@ const MemberForm: React.FC<MemberFormProps> = ({
         }
     }, [agentToEdit]);
 
+    const formatPhone = (value: string) => {
+        if (!value) return value;
+        const onlyNums = value.replace(/[^\d]/g, '');
+        if (onlyNums.length <= 2) return `(${onlyNums}`;
+        if (onlyNums.length <= 6) return `(${onlyNums.slice(0, 2)}) ${onlyNums.slice(2)}`;
+        if (onlyNums.length <= 10) return `(${onlyNums.slice(0, 2)}) ${onlyNums.slice(2, 6)}-${onlyNums.slice(6)}`;
+        return `(${onlyNums.slice(0, 2)}) ${onlyNums.slice(2, 7)}-${onlyNums.slice(7, 11)}`;
+    };
+
+    const formatCEP = (value: string) => {
+        if (!value) return value;
+        const onlyNums = value.replace(/[^\d]/g, '');
+        if (onlyNums.length > 5) {
+            return `${onlyNums.slice(0, 5)}-${onlyNums.slice(5, 8)}`;
+        }
+        return onlyNums;
+    };
+    
+    const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+        const cep = e.target.value.replace(/\D/g, '');
+        setCepError(null);
+
+        if (cep.length !== 8) {
+            if (cep.length > 0) setCepError("CEP inválido.");
+            return;
+        }
+
+        setIsFetchingCep(true);
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            if (!response.ok) throw new Error('CEP não encontrado');
+            const data = await response.json();
+            if (data.erro) {
+                setCepError("CEP não encontrado.");
+                setAgent(prev => ({ ...prev, street: '', neighborhood: '', city: '', state: '' }));
+            } else {
+                setAgent(prev => ({
+                    ...prev,
+                    street: data.logradouro,
+                    neighborhood: data.bairro,
+                    city: data.localidade,
+                    state: data.uf,
+                }));
+            }
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+            setCepError("Erro ao buscar CEP. Verifique sua conexão.");
+        } finally {
+            setIsFetchingCep(false);
+        }
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setAgent(prev => ({ ...prev, [name]: checked }));
         } else {
-            setAgent(prev => ({ ...prev, [name]: value }));
+            let formattedValue = value;
+            if (name === 'phone') {
+                formattedValue = formatPhone(value);
+            } else if (name === 'cep') {
+                formattedValue = formatCEP(value);
+            }
+            setAgent(prev => ({ ...prev, [name]: formattedValue }));
         }
     };
 
@@ -133,139 +319,157 @@ const MemberForm: React.FC<MemberFormProps> = ({
         e.preventDefault();
         onSave(agent as Member);
     };
+
+    const handlePrint = () => {
+        window.print();
+    };
     
     const formTitle = isFirstTimeRegister ? "Fazer meu primeiro cadastro" : (agentToEdit ? "Editar Cadastro de Agente" : "Cadastrar Novo Agente");
     const saveButtonText = isFirstTimeRegister ? "Cadastrar" : "Salvar Alterações";
 
     return (
-        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">{formTitle}</h2>
-            <form onSubmit={handleSubmit}>
-                <div className="space-y-6">
+        <div className="printable-area-wrapper">
+             <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+                <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">{formTitle}</h2>
+                <form onSubmit={handleSubmit}>
+                    <div className="space-y-6">
 
-                     {/* FOTO */}
-                     <div className="flex flex-col items-center space-y-4">
-                        <div className="w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                            {photoPreview ? (
-                                <img src={photoPreview} alt="Foto do Agente" className="w-full h-full object-cover" />
-                            ) : (
-                                <UserIcon className="w-16 h-16 text-slate-400" />
-                            )}
+                        {/* FOTO */}
+                        <div className="flex flex-col items-center space-y-4">
+                            <div className="w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                                {photoPreview ? (
+                                    <img src={photoPreview} alt="Foto do Agente" className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="w-16 h-16 text-slate-400" />
+                                )}
+                            </div>
+                            <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                            <label htmlFor="photo-upload" className="cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                                {photoPreview ? 'Alterar Foto' : 'Enviar Foto'}
+                            </label>
                         </div>
-                        <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoChange} />
-                        <label htmlFor="photo-upload" className="cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
-                            {photoPreview ? 'Alterar Foto' : 'Enviar Foto'}
-                        </label>
-                    </div>
 
-                    <FormSection title="Dados Pessoais">
-                        <InputField name="fullName" label="Nome Completo (Casal)" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-6" />
-                        <InputField 
-                            name="login" 
-                            label="Login (ex: jose.silva)" 
-                            value={agent.login} 
-                            onChange={handleChange} 
-                            required 
-                            colSpan="sm:col-span-3" 
-                            tooltip="Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
-                        />
-                        <InputField 
-                            name="birthDate" 
-                            label="Data de Nascimento (Titular)" 
-                            type="date" 
-                            value={agent.birthDate} 
-                            onChange={handleChange} 
-                            required 
-                            colSpan="sm:col-span-3"
-                            tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
-                        />
-                        <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-3">
-                             <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
-                                {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
-                            </select>
-                        </InputField>
-                        {agent.maritalStatus === MaritalStatus.CASADO && (
-                            <>
-                                <InputField name="spouseName" label="Nome do Cônjuge" value={agent.spouseName} onChange={handleChange} colSpan="sm:col-span-3" />
-                                <InputField name="weddingDate" label="Data de Casamento" type="date" value={agent.weddingDate} onChange={handleChange} colSpan="sm:col-span-3" />
-                            </>
-                        )}
-                    </FormSection>
-
-                    <FormSection title="Contato e Endereço">
-                        <InputField name="phone" label="Telefone / WhatsApp" value={agent.phone} onChange={handleChange} required colSpan="sm:col-span-3" />
-                        <InputField name="email" label="E-mail" type="email" value={agent.email} onChange={handleChange} required colSpan="sm:col-span-3" />
-                        <InputField 
-                            name="cep" 
-                            label="CEP" 
-                            value={agent.cep} 
-                            onChange={handleChange} 
-                            colSpan="sm:col-span-2"
-                            tooltip="Formato esperado: 00000-000."
-                        />
-                        <InputField name="street" label="Endereço (Rua, Av.)" value={agent.street} onChange={handleChange} colSpan="sm:col-span-4" />
-                        <InputField name="neighborhood" label="Bairro" value={agent.neighborhood} onChange={handleChange} colSpan="sm:col-span-2" />
-                        <InputField name="city" label="Cidade" value={agent.city} onChange={handleChange} colSpan="sm:col-span-2" />
-                        <InputField name="state" label="Estado (UF)" value={agent.state} onChange={handleChange} colSpan="sm:col-span-2" />
-                    </FormSection>
-
-                    <FormSection title="Informações Pastorais">
-                        <InputField name="parish" label="Paróquia" value={agent.parish} onChange={handleChange} colSpan="sm:col-span-3" />
-                        <InputField name="community" label="Comunidade" value={agent.community} onChange={handleChange} colSpan="sm:col-span-3" />
-                        <InputField name="sector" label="Setor Pastoral" required colSpan="sm:col-span-3">
-                            <select id="sector" name="sector" value={agent.sector} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
-                                {Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </InputField>
-                        {!isSelfEditing && !isFirstTimeRegister && (
-                             <InputField name="role" label="Função" required colSpan="sm:col-span-3">
-                                 <select id="role" name="role" value={agent.role} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
-                                    {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                        <FormSection title="Dados Pessoais">
+                            <InputField name="fullName" label="Nome Completo" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-6" />
+                            <InputField 
+                                name="login" 
+                                label="Login (ex: jose.silva)" 
+                                value={agent.login} 
+                                onChange={handleChange} 
+                                required 
+                                colSpan="sm:col-span-3" 
+                                tooltip="Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
+                            />
+                            <InputField 
+                                name="birthDate" 
+                                label="Data de Nascimento (Titular)" 
+                                type="date" 
+                                value={agent.birthDate} 
+                                onChange={handleChange} 
+                                required 
+                                colSpan="sm:col-span-3"
+                                tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
+                            />
+                            <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-3">
+                                <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
+                                    {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
                                 </select>
                             </InputField>
-                        )}
-                        <InputField name="joinDate" label="Data de Ingresso" type="date" value={agent.joinDate} onChange={handleChange} required colSpan="sm:col-span-3" />
-                    </FormSection>
-                    
-                     <FormSection title="Outras Informações">
-                        <div className="sm:col-span-6">
-                            <div className="relative flex items-start">
-                                <div className="flex h-6 items-center">
-                                    <input id="hasVehicle" name="hasVehicle" type="checkbox" checked={agent.hasVehicle || false} onChange={handleChange} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
-                                </div>
-                                <div className="ml-3 text-sm leading-6">
-                                    <label htmlFor="hasVehicle" className="font-medium text-slate-900">Possui veículo disponível para a Pastoral</label>
-                                </div>
-                            </div>
-                        </div>
-                        {agent.hasVehicle && (
-                            <InputField name="vehicleModel" label="Modelo do Veículo" value={agent.vehicleModel} onChange={handleChange} colSpan="sm:col-span-3" />
-                        )}
-                        <div className="sm:col-span-6">
-                             <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Observações</label>
-                             <div className="mt-1">
-                                <textarea
-                                    id="notes" name="notes" rows={3} value={agent.notes || ''} onChange={handleChange}
-                                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
-                                ></textarea>
-                            </div>
-                        </div>
-                    </FormSection>
-                </div>
+                            {agent.maritalStatus === MaritalStatus.CASADO && (
+                                <>
+                                    <InputField name="spouseName" label="Nome do Cônjuge" value={agent.spouseName} onChange={handleChange} colSpan="sm:col-span-3" />
+                                    <InputField name="weddingDate" label="Data de Casamento" type="date" value={agent.weddingDate} onChange={handleChange} colSpan="sm:col-span-3" />
+                                </>
+                            )}
+                        </FormSection>
 
-                <div className="pt-5 mt-6 border-t border-slate-200">
-                    <div className="flex justify-end gap-x-3">
-                        {!isSelfEditing && !isFirstTimeRegister && onCancel && (
-                            <button type="button" onClick={onCancel} className="rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
-                                Cancelar
-                            </button>
-                        )}
-                        <button type="submit" className="inline-flex justify-center rounded-md bg-blue-600 py-2 px-6 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-                           {saveButtonText}
-                        </button>
+                        <FormSection title="Contato e Endereço">
+                            <InputField name="phone" label="Telefone / WhatsApp" value={agent.phone} onChange={handleChange} required maxLength={15} colSpan="sm:col-span-3" />
+                            <InputField name="email" label="E-mail" type="email" value={agent.email} onChange={handleChange} required colSpan="sm:col-span-3" />
+                            <div className="sm:col-span-2">
+                                <InputField 
+                                    name="cep" 
+                                    label="CEP" 
+                                    value={agent.cep} 
+                                    onChange={handleChange}
+                                    onBlur={handleCepBlur}
+                                    maxLength={9}
+                                    colSpan="sm:col-span-6"
+                                />
+                                {isFetchingCep && <p className="text-xs text-slate-500 mt-1">Buscando endereço...</p>}
+                                {cepError && <p className="text-xs text-red-600 mt-1">{cepError}</p>}
+                            </div>
+                            <InputField name="street" label="Endereço (Rua, Av.)" value={agent.street} onChange={handleChange} disabled={isFetchingCep} colSpan="sm:col-span-4" />
+                            <InputField name="neighborhood" label="Bairro" value={agent.neighborhood} onChange={handleChange} disabled={isFetchingCep} colSpan="sm:col-span-2" />
+                            <InputField name="city" label="Cidade" value={agent.city} onChange={handleChange} disabled={isFetchingCep} colSpan="sm:col-span-2" />
+                            <InputField name="state" label="Estado (UF)" value={agent.state} onChange={handleChange} disabled={isFetchingCep} colSpan="sm:col-span-2" />
+                        </FormSection>
+
+                        <FormSection title="Informações Pastorais">
+                            <InputField name="parish" label="Paróquia" value={agent.parish} onChange={handleChange} colSpan="sm:col-span-3" />
+                            <InputField name="community" label="Comunidade" value={agent.community} onChange={handleChange} colSpan="sm:col-span-3" />
+                            <InputField name="sector" label="Setor Pastoral" required colSpan="sm:col-span-3">
+                                <select id="sector" name="sector" value={agent.sector} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
+                                    {Object.values(Sector).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </InputField>
+                            {!isSelfEditing && !isFirstTimeRegister && (
+                                <InputField name="role" label="Função" required colSpan="sm:col-span-3">
+                                    <select id="role" name="role" value={agent.role} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
+                                        {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </InputField>
+                            )}
+                            <InputField name="joinDate" label="Data de Ingresso" type="date" value={agent.joinDate} onChange={handleChange} required colSpan="sm:col-span-3" />
+                        </FormSection>
+                        
+                        <FormSection title="Outras Informações">
+                            <div className="sm:col-span-6">
+                                <div className="relative flex items-start">
+                                    <div className="flex h-6 items-center">
+                                        <input id="hasVehicle" name="hasVehicle" type="checkbox" checked={agent.hasVehicle || false} onChange={handleChange} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
+                                    </div>
+                                    <div className="ml-3 text-sm leading-6">
+                                        <label htmlFor="hasVehicle" className="font-medium text-slate-900">Possui veículo disponível para a Pastoral</label>
+                                    </div>
+                                </div>
+                            </div>
+                            {agent.hasVehicle && (
+                                <InputField name="vehicleModel" label="Modelo do Veículo" value={agent.vehicleModel} onChange={handleChange} colSpan="sm:col-span-3" />
+                            )}
+                            <div className="sm:col-span-6">
+                                <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Observações</label>
+                                <div className="mt-1">
+                                    <textarea
+                                        id="notes" name="notes" rows={3} value={agent.notes || ''} onChange={handleChange}
+                                        className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </FormSection>
                     </div>
-                </div>
-            </form>
+
+                    <div className="pt-5 mt-6 border-t border-slate-200">
+                        <div className="flex justify-end gap-x-3">
+                             {agentToEdit && !isFirstTimeRegister && !isSelfEditing && (
+                                <button type="button" onClick={handlePrint} className="inline-flex items-center gap-x-2 rounded-md bg-slate-600 py-2 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">
+                                    <PrintIcon className="h-5 w-5" />
+                                    Imprimir Ficha
+                                </button>
+                             )}
+                            {!isSelfEditing && !isFirstTimeRegister && onCancel && (
+                                <button type="button" onClick={onCancel} className="rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                                    Cancelar
+                                </button>
+                            )}
+                            <button type="submit" className="inline-flex justify-center rounded-md bg-blue-600 py-2 px-6 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                            {saveButtonText}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <PrintableFicha agent={agent} />
         </div>
     );
 };

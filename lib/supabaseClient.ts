@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // As chaves fornecidas são do tipo 'anon', que são seguras para serem expostas no lado do cliente (navegador),
