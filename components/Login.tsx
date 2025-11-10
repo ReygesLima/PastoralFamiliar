@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MemberForm from './MemberForm';
 import { Member } from '../types';
@@ -9,9 +8,11 @@ interface LoginProps {
     onRegister: (agentData: Member) => void;
     loginError: string | null;
     generalError: string | null;
+    errorLog: string[];
+    onDownloadLog: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalError }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalError, errorLog, onDownloadLog }) => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [login, setLogin] = useState('');
     const [birthDate, setBirthDate] = useState('');
@@ -34,7 +35,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
                     <p className="text-slate-600">Cadastro Paroquial</p>
                 </div>
                 
-                 {generalError && (
+                 {generalError && !loginError && (
                     <div className="bg-red-50 p-4 rounded-md border border-red-200 mb-6 w-full max-w-md mx-auto">
                         <p className="text-red-700 font-semibold text-center">{generalError}</p>
                     </div>
@@ -71,7 +72,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
                                     className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
                             </div>
-                            {loginError && <p className="text-sm text-red-600 text-center">{loginError}</p>}
+                            {loginError && (
+                                <div className="text-center p-3 bg-red-50 rounded-md border border-red-200">
+                                    <p className="text-sm text-red-600">{loginError}</p>
+                                    {errorLog.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={onDownloadLog}
+                                            className="mt-2 text-xs font-medium text-slate-600 hover:text-slate-800 underline focus:outline-none"
+                                        >
+                                            Gerar log do erro para análise
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             <div>
                                 <button type="submit" className="w-full px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                     Entrar

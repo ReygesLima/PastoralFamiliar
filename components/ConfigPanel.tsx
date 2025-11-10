@@ -1,12 +1,14 @@
-
 import React, { useState } from 'react';
+import { DownloadIcon } from './icons';
 
 interface ConfigPanelProps {
     errorMessage: string | null;
     onSave: (url: string, key: string) => void;
+    errorLog: string[];
+    onDownloadLog: () => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave, errorLog, onDownloadLog }) => {
     const [url, setUrl] = useState(localStorage.getItem('supabaseUrl') || '');
     const [key, setKey] = useState(localStorage.getItem('supabaseKey') || '');
     const [showKey, setShowKey] = useState(false);
@@ -100,14 +102,27 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave }) => {
                         Você pode encontrar essas informações no seu painel do Supabase, em <span className="font-semibold">Project Settings &gt; API</span>.
                         Certifique-se também de que a <a href="https://supabase.com/docs/guides/auth/row-level-security" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Row Level Security (RLS)</a> está habilitada e configurada para permitir leitura na tabela <code className="bg-slate-100 p-1 rounded text-xs">membros_pastoral</code>.
                     </p>
-
-                    <button
-                        type="submit"
-                        disabled={!url || !key}
-                        className="w-full px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                    >
-                        Salvar e Tentar Novamente
-                    </button>
+                    
+                    <div className="flex items-center space-x-3">
+                        <button
+                            type="submit"
+                            disabled={!url || !key}
+                            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        >
+                            Salvar e Tentar Novamente
+                        </button>
+                         {errorLog.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={onDownloadLog}
+                                className="flex items-center space-x-2 px-4 py-3 bg-slate-600 text-white rounded-md font-semibold hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                                title="Baixar log de erros da sessão"
+                            >
+                                <DownloadIcon className="h-5 w-5" />
+                                <span>Baixar Log de Erros</span>
+                            </button>
+                        )}
+                    </div>
                 </form>
             </div>
         </div>

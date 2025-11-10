@@ -15,6 +15,7 @@ function App() {
     const [agentToEdit, setAgentToEdit] = useState<Member | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [errorLog, setErrorLog] = useState<string[]>([]);
     const [loginError, setLoginError] = useState<string | null>(null);
     const [showConfigPanel, setShowConfigPanel] = useState(false);
     const [loggedInAgent, setLoggedInAgent] = useState<Member | null>(null);
@@ -34,6 +35,43 @@ function App() {
         } catch {}
         return 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.';
     };
+
+    const logAndSetError = (message: string | null, context?: string) => {
+        if (message) {
+            const timestamp = new Date().toISOString();
+            const logMessage = `${timestamp} [${context || 'GERAL'}]: ${message}`;
+            setErrorLog(prevLog => [...prevLog, logMessage]);
+        }
+        setError(message);
+    };
+
+    const handleDownloadLog = () => {
+        if (errorLog.length === 0) {
+            alert("Nenhum erro foi registrado na sessão atual.");
+            return;
+        }
+        
+        const url = localStorage.getItem('supabaseUrl') || '(não definida)';
+        const logContent = [
+            "Log de Erros - Pastoral Familiar App",
+            "====================================",
+            `Data: ${new Date().toLocaleString('pt-BR')}`,
+            `URL Supabase Configurada: ${url}`,
+            "====================================",
+            ...errorLog
+        ].join('\n');
+
+        const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8;' });
+        const link = document.createElement('a');
+        const downloadUrl = URL.createObjectURL(blob);
+        link.setAttribute('href', downloadUrl);
+        link.setAttribute('download', 'pastoral_app_error_log.txt');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+    };
     
     async function checkDbConnection() {
         setLoading(true);
@@ -45,7 +83,7 @@ function App() {
         } catch (err: any) {
             const message = getErrorMessage(err);
             console.error("Error checking DB connection:", message, err);
-            setError(`Falha ao conectar ao banco de dados: ${message}.`);
+            logAndSetError(`Falha ao conectar ao banco de dados: ${message}.`, "DB_CONNECTION");
             const isAuthError = message.includes('JWT') || message.includes('API key') || err.status === 401;
             const isTableError = (message.includes('relation') && message.includes('does not exist')) || message.includes('Could not find the table') || err.status === 404;
             if (isAuthError || isTableError) {
@@ -77,7 +115,7 @@ function App() {
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error fetching data for user:", message, err);
-            setError(`Falha ao carregar dados: ${message}`);
+            logAndSetError(`Falha ao carregar dados: ${message}`, "FETCH_DATA");
         } finally {
             setLoading(false);
         }
@@ -96,20 +134,59 @@ function App() {
     const handleLogin = async (login: string, birthDate: string) => {
         setLoading(true);
         setLoginError(null);
+        const triedCredentials = `Tentativa de login com: login='${login.trim().toUpperCase()}', data de nascimento='${birthDate}'`;
+        logAndSetError(triedCredentials, "LOGIN_ATTEMPT");
+
         try {
+            const cleanLogin = login.trim().toUpperCase();
+            if (!cleanLogin || !birthDate) {
+                throw new Error("Login e data de nascimento são obrigatórios.");
+            }
+            
+            // Solução definitiva: Usa o formato ISO 8601 completo com fuso UTC para a consulta.
+            // Isso elimina qualquer ambiguidade de fuso horário entre o cliente e o banco de dados.
+            const startDate = new Date(birthDate + 'T00:00:00.000Z');
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
+
             const { data, error: supabaseError } = await supabase
                 .from('membros_pastoral')
                 .select('*')
-                .ilike('login', login)
-                .eq('birthDate', birthDate)
-                .single();
-            if (supabaseError || !data) {
-                throw new Error("Agente não encontrado ou dados incorretos.");
+                .eq('login', cleanLogin)
+                .gte('birthDate', startDate.toISOString())
+                .lt('birthDate', endDate.toISOString());
+
+            // Log the raw response from the database to help debug login issues
+            const dbResponseLog = `Dados retornados pelo banco de dados: ${JSON.stringify(data, null, 2)}`;
+            logAndSetError(dbResponseLog, 'DB_RESPONSE');
+            console.log("Supabase query response:", data);
+
+
+            if (supabaseError) {
+                console.error(`Supabase login error: ${supabaseError.message}`, supabaseError);
+                logAndSetError(`Erro retornado pelo Supabase: ${supabaseError.message}`, "SUPABASE_ERROR");
+                throw new Error("Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.");
             }
-            setLoggedInAgent(data);
+
+            if (!data || data.length === 0) {
+                console.error("Login failed: No agent found with the provided credentials.", triedCredentials);
+                logAndSetError("Nenhum agente encontrado com as credenciais fornecidas.", "LOGIN_FAILURE");
+                throw new Error("Login ou data de nascimento incorretos. Por favor, verifique os dados e tente novamente.");
+            }
+            
+            if (data.length > 1) {
+                console.error("Login failed: Multiple agents found with the same credentials. This indicates a data integrity issue.", triedCredentials);
+                logAndSetError(`Inconsistência de dados: Múltiplos cadastros encontrados para o mesmo login e data de nascimento. Contate o administrador.`, "DATA_INTEGRITY_ERROR");
+                throw new Error("Existem múltiplos cadastros com as mesmas credenciais. Por favor, contate o administrador do sistema.");
+            }
+            
+            // Success, exactly one record found
+            setLoggedInAgent(data[0]);
+
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Login failed:", message);
+            logAndSetError(message, "LOGIN");
             setLoginError(message);
         } finally {
             setLoading(false);
@@ -125,7 +202,7 @@ function App() {
 
         const dataToInsert = {
             ...restOfAgentData,
-            login: restOfAgentData.login.toLowerCase(),
+            login: restOfAgentData.login.toUpperCase(),
             role: Role.AGENTE,
             weddingDate: restOfAgentData.weddingDate || null,
             spouseName: restOfAgentData.spouseName || null,
@@ -148,7 +225,7 @@ function App() {
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error registering agent:", message, err);
-            setError(`Falha ao cadastrar: ${message}.`);
+            logAndSetError(`Falha ao cadastrar: ${message}.`, "REGISTER");
             setTimeout(() => setError(null), 5000);
         } finally {
             setLoading(false);
@@ -158,13 +235,13 @@ function App() {
     const handleSaveAgent = async (agentData: Member) => {
         if (!loggedInAgent) return;
         if (loggedInAgent.role === Role.AGENTE && agentData.id !== loggedInAgent.id) {
-            setError("Você não tem permissão para editar outros agentes.");
+            logAndSetError("Você não tem permissão para editar outros agentes.", "SAVE_AGENT");
             return;
         }
 
         const dataToUpsert = {
             ...agentData,
-            login: agentData.login.toLowerCase(),
+            login: agentData.login.toUpperCase(),
             weddingDate: agentData.weddingDate || null,
             spouseName: agentData.spouseName || null,
             vehicleModel: agentData.vehicleModel || null,
@@ -193,7 +270,7 @@ function App() {
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error saving agent:", message, err);
-            setError(`Falha ao salvar o agente: ${message}`);
+            logAndSetError(`Falha ao salvar o agente: ${message}`, "SAVE_AGENT");
         } finally {
             setCurrentView('LIST');
             setAgentToEdit(null);
@@ -202,7 +279,7 @@ function App() {
 
     const handleDeleteAgent = async (id: number) => {
         if (loggedInAgent?.role !== Role.COORDENADOR) {
-            setError("Você não tem permissão para excluir agentes.");
+            logAndSetError("Você não tem permissão para excluir agentes.", "DELETE_AGENT");
             return;
         }
         if (window.confirm('Tem certeza que deseja excluir este agente?')) {
@@ -213,7 +290,7 @@ function App() {
             } catch (err) {
                 const message = getErrorMessage(err);
                 console.error("Error deleting agent:", message, err);
-                setError(`Falha ao excluir o agente: ${message}`);
+                logAndSetError(`Falha ao excluir o agente: ${message}`, "DELETE_AGENT");
             }
         }
     };
@@ -252,26 +329,34 @@ function App() {
         }
 
         if (showConfigPanel) {
-            return <ConfigPanel errorMessage={error} onSave={handleConfigSave} />;
+            return <ConfigPanel errorMessage={error} onSave={handleConfigSave} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
         }
         
         if (!loggedInAgent) {
-            return <Login onLogin={handleLogin} onRegister={handleRegister} loginError={loginError} generalError={error} />;
+            return <Login onLogin={handleLogin} onRegister={handleRegister} loginError={loginError} generalError={error} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
         }
 
         if (loggedInAgent.role === Role.COORDENADOR) {
             switch (currentView) {
-                case 'LIST': return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
+                case 'LIST': return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} loggedInAgent={loggedInAgent} />;
                 case 'FORM': return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
                 case 'REPORTS': return <Reports agents={agents} />;
                 case 'ABOUT': return <About />;
-                default: return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} />;
+                default: return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} loggedInAgent={loggedInAgent} />;
             }
         }
 
         if (loggedInAgent.role === Role.AGENTE) {
-             if (currentView === 'ABOUT') return <About />;
-            return <MemberForm agentToEdit={loggedInAgent} onSave={handleSaveAgent} isSelfEditing={true} />;
+             switch (currentView) {
+                case 'LIST': 
+                    return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={() => {}} onAddNew={() => {}} loggedInAgent={loggedInAgent} />;
+                case 'FORM':
+                    return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} isSelfEditing={true} />;
+                case 'ABOUT': 
+                    return <About />;
+                default: 
+                    return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={() => {}} onAddNew={() => {}} loggedInAgent={loggedInAgent} />;
+            }
         }
     };
 
