@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MemberForm from './MemberForm';
 import { Member } from '../types';
 import { LogoIcon } from './icons';
@@ -16,6 +16,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
     const [isRegistering, setIsRegistering] = useState(false);
     const [login, setLogin] = useState('');
     const [birthDate, setBirthDate] = useState('');
+
+    const loginInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        // Foca no campo de login quando o componente de login é exibido
+        if (!isRegistering) {
+            loginInputRef.current?.focus();
+        }
+    }, [isRegistering]);
 
     const handleLoginSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,6 +70,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegister, loginError, generalE
                             <div>
                                 <label htmlFor="login" className="block text-sm font-medium text-slate-700">Login</label>
                                 <input
+                                    ref={loginInputRef}
                                     id="login" type="text" value={login} onChange={(e) => setLogin(e.target.value)} required
                                     className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
