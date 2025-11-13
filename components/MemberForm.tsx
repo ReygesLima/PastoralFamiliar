@@ -5,14 +5,14 @@ import { UserIcon, InfoIcon, PrintIcon } from './icons';
 
 interface MemberFormProps {
     agentToEdit: Member | null;
-    onSave: (agent: Member) => void;
+    onSave: (agent: Member) => Promise<boolean>;
     onCancel?: () => void;
     isSelfEditing?: boolean;
     isFirstTimeRegister?: boolean;
 }
 
-const emptyAgent: Omit<Member, 'id' | 'role'> & { id?: number, role?: Role } = {
-    Login: '',
+const emptyAgent: Omit<Member, 'id'> = {
+    login: '',
     photo: '',
     fullName: '',
     birthDate: '',
@@ -31,6 +31,7 @@ const emptyAgent: Omit<Member, 'id' | 'role'> & { id?: number, role?: Role } = {
     parish: '',
     community: '',
     sector: Sector.PRE_MATRIMONIAL,
+    role: Role.AGENTE,
     joinDate: new Date().toISOString().split('T')[0],
     notes: '',
 };
@@ -99,22 +100,19 @@ const MemberForm: React.FC<MemberFormProps> = ({
     isSelfEditing = false,
     isFirstTimeRegister = false,
 }) => {
-    const [agent, setAgent] = useState<Partial<Member>>(emptyAgent);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    // Definitive Fix: Initialize state directly from props.
+    // The `key` prop in App.tsx ensures this component is fully
+    // re-created when a different agent is selected, so this
+    // initialization logic runs with the correct `agentToEdit`.
+    const [agent, setAgent] = useState<Partial<Member>>(
+        agentToEdit ? { ...agentToEdit } : { ...emptyAgent }
+    );
+    const [photoPreview, setPhotoPreview] = useState<string | null>(agentToEdit?.photo || null);
     const [isFetchingCep, setIsFetchingCep] = useState(false);
     const [cepError, setCepError] = useState<string | null>(null);
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
-    useEffect(() => {
-        if (agentToEdit) {
-            setAgent(agentToEdit);
-            if (agentToEdit.photo) setPhotoPreview(agentToEdit.photo);
-            else setPhotoPreview(null);
-        } else {
-            setAgent(emptyAgent);
-            setPhotoPreview(null);
-        }
-    }, [agentToEdit]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const formatPhone = (value: string) => {
         if (!value) return value;
@@ -137,32 +135,39 @@ const MemberForm: React.FC<MemberFormProps> = ({
     const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
         const cep = e.target.value.replace(/\D/g, '');
         setCepError(null);
-
+    
         if (cep.length !== 8) {
             if (cep.length > 0) setCepError("CEP inválido.");
             return;
         }
-
+    
         setIsFetchingCep(true);
         try {
-            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            if (!response.ok) throw new Error('CEP não encontrado');
+            const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error("CEP não encontrado.");
+                }
+                throw new Error("Serviço de busca de CEP indisponível no momento.");
+            }
             const data = await response.json();
-            if (data.erro) {
-                setCepError("CEP não encontrado.");
-                setAgent(prev => ({ ...prev, street: '', neighborhood: '', city: '', state: '' }));
-            } else {
+            if (data) {
                 setAgent(prev => ({
                     ...prev,
-                    street: data.logradouro,
-                    neighborhood: data.bairro,
-                    city: data.localidade,
-                    state: data.uf,
+                    street: data.street,
+                    neighborhood: data.neighborhood,
+                    city: data.city,
+                    state: data.state,
                 }));
             }
         } catch (error) {
             console.error("Erro ao buscar CEP:", error);
-            setCepError("Erro ao buscar CEP. Verifique sua conexão.");
+            const errorMessage = (error instanceof Error) ? error.message : "Verifique sua conexão e tente novamente.";
+            if (errorMessage.includes('Failed to fetch')) {
+                 setCepError("Não foi possível buscar o CEP. Verifique sua conexão com a internet.");
+            } else {
+                 setCepError(errorMessage);
+            }
         } finally {
             setIsFetchingCep(false);
         }
@@ -197,9 +202,30 @@ const MemberForm: React.FC<MemberFormProps> = ({
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(agent as Member);
+        if (isSaving || successMessage) return;
+
+        setIsSaving(true);
+        setSuccessMessage(null);
+        
+        const success = await onSave(agent as Member).catch(err => {
+            console.error("Erro silencioso ao salvar:", err);
+            return false;
+        });
+        
+        setIsSaving(false);
+
+        if (success) {
+            if (!isFirstTimeRegister) {
+                setSuccessMessage('Dados salvos com sucesso!');
+                if (onCancel) {
+                    setTimeout(() => {
+                        onCancel();
+                    }, 2000);
+                }
+            }
+        }
     };
 
     const handleGeneratePDF = async () => {
@@ -340,6 +366,7 @@ const MemberForm: React.FC<MemberFormProps> = ({
     
     const formTitle = isFirstTimeRegister ? "Fazer meu primeiro cadastro" : (agentToEdit ? "Editar Cadastro de Agente" : "Cadastrar Novo Agente");
     const saveButtonText = isFirstTimeRegister ? "Cadastrar" : "Salvar Alterações";
+    const savingButtonText = isFirstTimeRegister ? "Cadastrando..." : "Salvando...";
 
     return (
         <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md max-w-4xl mx-auto">
@@ -347,53 +374,62 @@ const MemberForm: React.FC<MemberFormProps> = ({
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
 
-                    {/* FOTO */}
-                    <div className="flex flex-col items-center space-y-4">
-                        <div className="w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                            {photoPreview ? (
-                                <img src={photoPreview} alt="Foto do Agente" className="w-full h-full object-cover" />
-                            ) : (
-                                <UserIcon className="w-16 h-16 text-slate-400" />
-                            )}
-                        </div>
-                        <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoChange} />
-                        <label htmlFor="photo-upload" className="cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
-                            {photoPreview ? 'Alterar Foto' : 'Enviar Foto'}
-                        </label>
-                    </div>
-
                     <FormSection title="Dados Pessoais">
-                        <InputField name="fullName" label="Nome Completo" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-6" />
-                        <InputField 
-                            name="Login" 
-                            label="Login (ex: jose.silva)" 
-                            value={agent.Login} 
-                            onChange={handleChange} 
-                            required 
-                            colSpan="sm:col-span-3" 
-                            tooltip="Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
-                        />
-                        <InputField 
-                            name="birthDate" 
-                            label="Data de Nascimento (Titular)" 
-                            type="date" 
-                            value={agent.birthDate} 
-                            onChange={handleChange} 
-                            required 
-                            colSpan="sm:col-span-3"
-                            tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
-                        />
-                        <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-3">
-                            <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
-                                {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
-                            </select>
-                        </InputField>
-                        {agent.maritalStatus === MaritalStatus.CASADO && (
-                            <>
-                                <InputField name="spouseName" label="Nome do Cônjuge" value={agent.spouseName} onChange={handleChange} colSpan="sm:col-span-3" />
-                                <InputField name="weddingDate" label="Data de Casamento" type="date" value={agent.weddingDate} onChange={handleChange} colSpan="sm:col-span-3" />
-                            </>
-                        )}
+                        <div className="sm:col-span-4 space-y-6">
+                           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                                <InputField name="fullName" label="Nome Completo" value={agent.fullName} onChange={handleChange} required colSpan="sm:col-span-2" />
+                                <InputField 
+                                    name="login" 
+                                    label="Login"
+                                    value={agent.login} 
+                                    onChange={handleChange} 
+                                    required 
+                                    disabled={!!agentToEdit}
+                                    colSpan="sm:col-span-1" 
+                                    tooltip={
+                                        isFirstTimeRegister
+                                        ? "Este login é único no cadastro e será utilizado para os próximos acessos junto com sua data de nascimento."
+                                        : "O login não pode ser alterado após o cadastro."
+                                    }
+                                />
+                                <InputField 
+                                    name="birthDate" 
+                                    label="Data de Nascimento (Titular)" 
+                                    type="date" 
+                                    value={agent.birthDate} 
+                                    onChange={handleChange} 
+                                    required 
+                                    colSpan="sm:col-span-1"
+                                    tooltip="Sua data de nascimento será usada como parte da sua senha para acessar o sistema."
+                                />
+                                <InputField name="maritalStatus" label="Estado Civil" required colSpan="sm:col-span-2">
+                                    <select id="maritalStatus" name="maritalStatus" value={agent.maritalStatus} onChange={handleChange} className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5">
+                                        {Object.values(MaritalStatus).map(status => <option key={status} value={status}>{status}</option>)}
+                                    </select>
+                                </InputField>
+                                {agent.maritalStatus === MaritalStatus.CASADO && (
+                                    <>
+                                        <InputField name="spouseName" label="Nome do Cônjuge" value={agent.spouseName} onChange={handleChange} colSpan="sm:col-span-1" />
+                                        <InputField name="weddingDate" label="Data de Casamento" type="date" value={agent.weddingDate} onChange={handleChange} colSpan="sm:col-span-1" />
+                                    </>
+                                )}
+                           </div>
+                        </div>
+
+                        <div className="sm:col-span-2 flex flex-col items-center justify-start pt-5">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Foto</label>
+                            <div className="w-32 h-32 mt-1 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                                {photoPreview ? (
+                                    <img src={photoPreview} alt="Foto do Agente" className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="w-16 h-16 text-slate-400" />
+                                )}
+                            </div>
+                            <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                            <label htmlFor="photo-upload" className="mt-4 cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                                {photoPreview ? 'Alterar Foto' : 'Enviar Foto'}
+                            </label>
+                        </div>
                     </FormSection>
 
                     <FormSection title="Contato e Endereço">
@@ -463,20 +499,25 @@ const MemberForm: React.FC<MemberFormProps> = ({
                 </div>
 
                 <div className="pt-5 mt-6 border-t border-slate-200">
-                    <div className="flex justify-end gap-x-3">
+                    <div className="flex justify-end items-center gap-x-3">
+                         {successMessage && (
+                            <p className="text-sm font-semibold text-green-600 mr-auto animate-pulse">
+                                {successMessage}
+                            </p>
+                        )}
                          {agentToEdit && !isFirstTimeRegister && !isSelfEditing && (
-                            <button type="button" onClick={handleGeneratePDF} disabled={isGeneratingPDF} className="inline-flex items-center gap-x-2 rounded-md bg-slate-600 py-2 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                            <button type="button" onClick={handleGeneratePDF} disabled={isGeneratingPDF || isSaving || !!successMessage} className="inline-flex items-center gap-x-2 rounded-md bg-slate-600 py-2 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
                                 <PrintIcon className="h-5 w-5" />
                                 {isGeneratingPDF ? 'Gerando PDF...' : 'Imprimir Ficha'}
                             </button>
                          )}
                         {!isSelfEditing && !isFirstTimeRegister && onCancel && (
-                            <button type="button" onClick={onCancel} className="rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                            <button type="button" onClick={onCancel} disabled={isSaving || !!successMessage} className="rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:bg-slate-200 disabled:cursor-not-allowed">
                                 Cancelar
                             </button>
                         )}
-                        <button type="submit" className="inline-flex justify-center rounded-md bg-blue-600 py-2 px-6 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-                        {saveButtonText}
+                        <button type="submit" disabled={isSaving || !!successMessage} className="inline-flex justify-center rounded-md bg-blue-600 py-2 px-6 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-slate-400 disabled:cursor-wait">
+                            {isSaving ? savingButtonText : saveButtonText}
                         </button>
                     </div>
                 </div>

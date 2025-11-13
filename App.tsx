@@ -8,17 +8,19 @@ import ConfigPanel from './components/ConfigPanel';
 import Login from './components/Login';
 import { Member, View, Role } from './types';
 import { supabase } from './lib/supabaseClient';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
+import NotificationContainer from './components/NotificationContainer';
+import { LogoIcon } from './components/icons';
 
-function App() {
+function AppContent() {
     const [agents, setAgents] = useState<Member[]>([]);
     const [currentView, setCurrentView] = useState<View>('LIST');
     const [agentToEdit, setAgentToEdit] = useState<Member | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [errorLog, setErrorLog] = useState<string[]>([]);
-    const [loginError, setLoginError] = useState<string | null>(null);
     const [showConfigPanel, setShowConfigPanel] = useState(false);
     const [loggedInAgent, setLoggedInAgent] = useState<Member | null>(null);
+    const { addNotification } = useNotification();
     
     const getErrorMessage = (error: unknown): string => {
         if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
@@ -36,13 +38,13 @@ function App() {
         return 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.';
     };
 
-    const logAndSetError = (message: string | null, context?: string) => {
+    const logAndNotifyError = (message: string | null, context?: string) => {
         if (message) {
             const timestamp = new Date().toISOString();
             const logMessage = `${timestamp} [${context || 'GERAL'}]: ${message}`;
             setErrorLog(prevLog => [...prevLog, logMessage]);
+            addNotification({ message, type: 'error' });
         }
-        setError(message);
     };
 
     const handleDownloadLog = () => {
@@ -75,7 +77,6 @@ function App() {
     
     async function checkDbConnection() {
         setLoading(true);
-        setError(null);
         setShowConfigPanel(false);
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').select('id').limit(1);
@@ -83,7 +84,7 @@ function App() {
         } catch (err: any) {
             const message = getErrorMessage(err);
             console.error("Error checking DB connection:", message, err);
-            logAndSetError(`Falha ao conectar ao banco de dados: ${message}.`, "DB_CONNECTION");
+            logAndNotifyError(`Falha ao conectar ao banco de dados: ${message}.`, "DB_CONNECTION");
             const isAuthError = message.includes('JWT') || message.includes('API key') || err.status === 401;
             const isTableError = (message.includes('relation') && message.includes('does not exist')) || message.includes('Could not find the table') || err.status === 404;
             if (isAuthError || isTableError) {
@@ -100,7 +101,6 @@ function App() {
     
     async function fetchDataForUser(user: Member) {
         setLoading(true);
-        setError(null);
         try {
             if (user.role === Role.COORDENADOR) {
                 const { data, error: supabaseError } = await supabase
@@ -115,7 +115,7 @@ function App() {
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error fetching data for user:", message, err);
-            logAndSetError(`Falha ao carregar dados: ${message}`, "FETCH_DATA");
+            logAndNotifyError(`Falha ao carregar dados: ${message}`, "FETCH_DATA");
         } finally {
             setLoading(false);
         }
@@ -127,15 +127,12 @@ function App() {
             setCurrentView('LIST');
         } else {
             setAgents([]);
-            setLoginError(null);
         }
     }, [loggedInAgent]);
     
     const handleLogin = async (login: string, birthDate: string) => {
         setLoading(true);
-        setLoginError(null);
         const triedCredentials = `Tentativa de login com: login='${login.trim()}', data de nascimento='${birthDate}'`;
-        logAndSetError(triedCredentials, "LOGIN_ATTEMPT");
     
         try {
             const cleanLogin = login.trim();
@@ -143,20 +140,13 @@ function App() {
                 throw new Error("Login e data de nascimento são obrigatórios.");
             }
     
-            // SOLUÇÃO DEFINITIVA: Chama a função SQL 'login_agente' via RPC.
-            // Esta função executa a lógica de consulta exata validada pelo usuário.
             const { data, error: rpcError } = await supabase.rpc('login_agente', {
                 p_login: cleanLogin,
                 p_birth_date: birthDate
             });
     
-            const dbResponseLog = `Dados retornados pela função 'login_agente': ${JSON.stringify(data, null, 2)}`;
-            logAndSetError(dbResponseLog, 'DB_RESPONSE_RPC');
-            console.log("Supabase RPC response:", data);
-    
             if (rpcError) {
                 console.error(`Supabase RPC login error: ${rpcError.message}`, rpcError);
-                logAndSetError(`Erro retornado pelo Supabase (RPC): ${rpcError.message}`, "SUPABASE_RPC_ERROR");
                 if(rpcError.message.includes("function login_agente does not exist")){
                      throw new Error("A função de login não foi encontrada no banco de dados. Por favor, execute o script do arquivo 'database.sql' no SQL Editor do Supabase.");
                 }
@@ -165,25 +155,21 @@ function App() {
     
             const resultData = data as Member[];
             if (!resultData || resultData.length === 0) {
-                console.error("Login failed: No agent found with the provided credentials.", triedCredentials);
-                logAndSetError("Nenhum agente encontrado com as credenciais fornecidas.", "LOGIN_FAILURE");
                 throw new Error("Login ou data de nascimento incorretos. Dica: Se os dados estiverem corretos, verifique se as políticas de segurança (RLS) do Supabase permitem a leitura da tabela 'membros_pastoral'.");
             }
     
             if (resultData.length > 1) {
-                console.error("Login failed: Multiple agents found with the same credentials. This indicates a data integrity issue.", triedCredentials);
-                logAndSetError(`Inconsistência de dados: Múltiplos cadastros encontrados para o mesmo login e data de nascimento. Contate o administrador.`, "DATA_INTEGRITY_ERROR");
                 throw new Error("Existem múltiplos cadastros com as mesmas credenciais. Por favor, contate o administrador do sistema.");
             }
     
-            // Sucesso, exatamente um registro encontrado
-            setLoggedInAgent(resultData[0]);
+            const agent = resultData[0];
+            addNotification({ message: `Bem-vindo, ${agent.fullName.split(' ')[0]}!`, type: 'success' });
+            setLoggedInAgent(agent);
     
         } catch (err) {
             const message = getErrorMessage(err);
-            console.error("Login failed:", message);
-            logAndSetError(message, "LOGIN");
-            setLoginError(message);
+            console.error("Login failed:", message, triedCredentials);
+            logAndNotifyError(message, "LOGIN");
         } finally {
             setLoading(false);
         }
@@ -193,7 +179,7 @@ function App() {
         setLoggedInAgent(null);
     };
     
-    const handleRegister = async (agentData: Member) => {
+    const handleRegister = async (agentData: Member): Promise<boolean> => {
         const { id, ...restOfAgentData } = agentData;
 
         const dataToInsert = {
@@ -207,85 +193,99 @@ function App() {
         };
         
         setLoading(true);
-        setError(null);
         try {
             const { error: supabaseError } = await supabase.from('membros_pastoral').insert(dataToInsert);
             if (supabaseError) {
-                if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_Login_key"')) { // Assuming the key constraint is on "Login"
+                if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
                     throw new Error("Este login já está em uso. Por favor, escolha outro.");
                 }
                 throw supabaseError;
             }
-            await handleLogin(agentData.Login, agentData.birthDate);
+            // Não chama o handleLogin diretamente, mas sim o que está por trás dele
+            await handleLogin(agentData.login, agentData.birthDate);
+            return true;
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error registering agent:", message, err);
-            logAndSetError(`Falha ao cadastrar: ${message}.`, "REGISTER");
-            setTimeout(() => setError(null), 5000);
+            logAndNotifyError(`Falha ao cadastrar: ${message}.`, "REGISTER");
+            return false;
         } finally {
             setLoading(false);
         }
     };
     
-    const handleSaveAgent = async (agentData: Member) => {
-        if (!loggedInAgent) return;
+    const handleSaveAgent = async (agentData: Member): Promise<boolean> => {
+        if (!loggedInAgent) return false;
         if (loggedInAgent.role === Role.AGENTE && agentData.id !== loggedInAgent.id) {
-            logAndSetError("Você não tem permissão para editar outros agentes.", "SAVE_AGENT");
-            return;
+            logAndNotifyError("Você não tem permissão para editar outros agentes.", "SAVE_AGENT");
+            return false;
         }
-
-        const dataToUpsert = {
-            ...agentData,
-            weddingDate: agentData.weddingDate || null,
-            spouseName: agentData.spouseName || null,
-            vehicleModel: agentData.vehicleModel || null,
-            photo: agentData.photo || null,
-            notes: agentData.notes || null,
+        
+        setLoading(true);
+        
+        const { id, ...restOfData } = agentData;
+        const dataForDb = {
+            ...restOfData,
+            weddingDate: restOfData.weddingDate || null,
+            spouseName: restOfData.spouseName || null,
+            vehicleModel: restOfData.vehicleModel || null,
+            photo: restOfData.photo || null,
+            notes: restOfData.notes || null,
         };
-        if (!dataToUpsert.id) {
-          delete (dataToUpsert as Partial<typeof dataToUpsert>).id;
-        }
-
+    
         try {
-            const { error: supabaseError } = await supabase.from('membros_pastoral').upsert(dataToUpsert);
-            if (supabaseError) {
-                 if(supabaseError.message.includes('duplicate key value violates unique constraint "membros_pastoral_Login_key"')) {
+            let resultError;
+    
+            if (id) {
+                const { error } = await supabase.from('membros_pastoral').update(dataForDb).eq('id', id);
+                resultError = error;
+            } else {
+                const { error } = await supabase.from('membros_pastoral').insert(dataForDb);
+                resultError = error;
+            }
+    
+            if (resultError) {
+                if (resultError.message.includes('duplicate key value violates unique constraint "membros_pastoral_login_key"')) {
                     throw new Error("Este login já está em uso. Por favor, escolha outro.");
                 }
-                throw supabaseError;
+                throw resultError;
             }
-            
+    
             if (loggedInAgent.id === agentData.id) {
                 setLoggedInAgent(agentData);
-            } else {
+            }
+            
+            if (loggedInAgent.role === Role.COORDENADOR) {
                 await fetchDataForUser(loggedInAgent);
             }
-
+            addNotification({ message: 'Agente salvo com sucesso!', type: 'success' });
+            return true;
+    
         } catch (err) {
             const message = getErrorMessage(err);
             console.error("Error saving agent:", message, err);
-            logAndSetError(`Falha ao salvar o agente: ${message}`, "SAVE_AGENT");
+            logAndNotifyError(`Falha ao salvar o agente: ${message}`, "SAVE_AGENT");
+            return false;
         } finally {
-            setCurrentView('LIST');
-            setAgentToEdit(null);
+            setLoading(false);
         }
     };
 
     const handleDeleteAgent = async (id: number) => {
         if (loggedInAgent?.role !== Role.COORDENADOR) {
-            logAndSetError("Você não tem permissão para excluir agentes.", "DELETE_AGENT");
+            logAndNotifyError("Você não tem permissão para excluir agentes.", "DELETE_AGENT");
             return;
         }
-        if (window.confirm('Tem certeza que deseja excluir este agente?')) {
-            try {
-                const { error: supabaseError } = await supabase.from('membros_pastoral').delete().eq('id', id);
-                if (supabaseError) throw supabaseError;
-                setAgents(prevAgents => prevAgents.filter(m => m.id !== id));
-            } catch (err) {
-                const message = getErrorMessage(err);
-                console.error("Error deleting agent:", message, err);
-                logAndSetError(`Falha ao excluir o agente: ${message}`, "DELETE_AGENT");
-            }
+        
+        try {
+            const { error: supabaseError } = await supabase.from('membros_pastoral').delete().eq('id', id);
+            if (supabaseError) throw supabaseError;
+            setAgents(prevAgents => prevAgents.filter(m => m.id !== id));
+            addNotification({ message: 'Agente excluído com sucesso!', type: 'success' });
+        } catch (err) {
+            const message = getErrorMessage(err);
+            console.error("Error deleting agent:", message, err);
+            logAndNotifyError(`Falha ao excluir o agente: ${message}`, "DELETE_AGENT");
         }
     };
     
@@ -315,26 +315,29 @@ function App() {
     };
     
     const renderContent = () => {
-        if (loading && !loggedInAgent) {
+        if (loading && !loggedInAgent && !showConfigPanel) {
             return (
-                <div className="flex justify-center items-center h-screen">
-                    <p className="text-slate-500 text-lg animate-pulse">Conectando ao banco de dados...</p>
+                <div className="flex flex-col justify-center items-center h-screen bg-slate-100">
+                    <LogoIcon className="h-24 w-24 mb-4 animate-pulse" />
+                    <h2 className="text-xl font-semibold text-slate-600">Aguarde...</h2>
+                    <p className="text-slate-500 mt-2">Estamos preparando tudo para você.</p>
                 </div>
             );
         }
 
         if (showConfigPanel) {
-            return <ConfigPanel errorMessage={error} onSave={handleConfigSave} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
+            const firstError = errorLog.length > 0 ? errorLog[0].split(': ')[1] : null;
+            return <ConfigPanel errorMessage={firstError} onSave={handleConfigSave} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
         }
         
         if (!loggedInAgent) {
-            return <Login onLogin={handleLogin} onRegister={handleRegister} loginError={loginError} generalError={error} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
+            return <Login onLogin={handleLogin} onRegister={handleRegister} loading={loading} errorLog={errorLog} onDownloadLog={handleDownloadLog} />;
         }
 
         if (loggedInAgent.role === Role.COORDENADOR) {
             switch (currentView) {
                 case 'LIST': return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} loggedInAgent={loggedInAgent} />;
-                case 'FORM': return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
+                case 'FORM': return <MemberForm key={agentToEdit?.id || 'new'} agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} />;
                 case 'REPORTS': return <Reports agents={agents} />;
                 case 'ABOUT': return <About />;
                 default: return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={handleDeleteAgent} onAddNew={handleAddNew} loggedInAgent={loggedInAgent} />;
@@ -346,7 +349,7 @@ function App() {
                 case 'LIST': 
                     return <MemberList agents={agents} onEdit={handleEditAgent} onDelete={() => {}} onAddNew={() => {}} loggedInAgent={loggedInAgent} />;
                 case 'FORM':
-                    return <MemberForm agentToEdit={agentToEdit} onSave={handleSaveAgent} onCancel={handleCancel} isSelfEditing={true} />;
+                    return <MemberForm agentToEdit={loggedInAgent} onSave={handleSaveAgent} onCancel={() => setCurrentView('LIST')} isSelfEditing={true} />;
                 case 'ABOUT': 
                     return <About />;
                 default: 
@@ -362,6 +365,16 @@ function App() {
                 {renderContent()}
             </main>
         </div>
+    );
+}
+
+
+function App() {
+    return (
+        <NotificationProvider>
+            <NotificationContainer />
+            <AppContent />
+        </NotificationProvider>
     );
 }
 

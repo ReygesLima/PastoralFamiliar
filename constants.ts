@@ -3,7 +3,7 @@ import { Member, MaritalStatus, Sector, Role } from './types';
 export const INITIAL_AGENTS: Member[] = [
     {
         id: 1,
-        Login: 'joao.silva',
+        login: 'joao.silva',
         photo: '',
         fullName: 'João da Silva e Maria da Silva',
         birthDate: '1980-05-15',
@@ -28,7 +28,7 @@ export const INITIAL_AGENTS: Member[] = [
     },
     {
         id: 2,
-        Login: 'carlos.souza',
+        login: 'carlos.souza',
         photo: '',
         fullName: 'Carlos Souza',
         birthDate: '1992-11-20',
@@ -50,7 +50,7 @@ export const INITIAL_AGENTS: Member[] = [
     },
     {
         id: 3,
-        Login: 'ana.pereira',
+        login: 'ana.pereira',
         photo: '',
         fullName: 'Ana Pereira',
         birthDate: '1965-03-30',

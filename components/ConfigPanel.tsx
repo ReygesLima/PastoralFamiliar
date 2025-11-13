@@ -27,18 +27,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ errorMessage, onSave, errorLo
             <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-lg border border-slate-200">
                 <h2 className="text-2xl font-bold text-slate-800 text-center">Configuração de Acesso</h2>
                 <p className="text-slate-500 text-center mt-2 mb-6">
-                    Não foi possível conectar ao banco de dados. Isso geralmente ocorre por uma chave de API inválida ou por falta de permissões (RLS).
+                    Não foi possível conectar ao banco de dados. Verifique as credenciais ou a estrutura do banco (tabela/funções).
                 </p>
 
                 {isTableError && (
                     <div className="bg-amber-50 p-4 rounded-md border border-amber-200 mb-6">
-                        <h4 className="font-bold text-amber-800">Dica: Tabela não encontrada</h4>
+                        <h4 className="font-bold text-amber-800">Dica: Tabela ou Função não encontrada</h4>
                         <p className="text-amber-700 text-sm mt-1">
-                            O erro indica que a tabela <code className="bg-amber-100 p-1 rounded text-xs font-mono">membros_pastoral</code> não foi encontrada. 
-                            Verifique no seu painel do Supabase (em "Table Editor") se a tabela foi criada e se o nome corresponde <span className="font-bold">exatamente</span>.
+                            O erro sugere que a tabela <code className="bg-amber-100 p-1 rounded text-xs font-mono">membros_pastoral</code> ou a função <code className="bg-amber-100 p-1 rounded text-xs font-mono">login_agente</code> não existem.
                         </p>
                          <div className="mt-4 pt-3 border-t border-amber-200">
-                             <h5 className="font-semibold text-amber-800">Como criar a tabela?</h5>
+                             <h5 className="font-semibold text-amber-800">Como corrigir?</h5>
                              <p className="text-amber-700 text-sm mt-1">
                                 Para sua conveniência, um script SQL foi gerado. Siga estes passos:
                             </p>

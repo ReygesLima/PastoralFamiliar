@@ -63,7 +63,12 @@ const MemberList: React.FC<MemberListProps> = ({ agents, onEdit, onDelete, onAdd
 
     const isCoordinator = loggedInAgent.role === Role.COORDENADOR;
 
-    const sectors = Object.values(Sector);
+    const sectors = useMemo(() => {
+        if (!agents) return [];
+        const uniqueSectors = new Set(agents.map(agent => agent.sector));
+        // FIX: Explicitly type sort parameters as string to resolve TypeScript error.
+        return Array.from(uniqueSectors).sort((a: string, b: string) => a.localeCompare(b));
+    }, [agents]);
     const roles = Object.values(Role);
 
     const filteredAgents = useMemo(() => {
